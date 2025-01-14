@@ -269,7 +269,7 @@ export default function MessagesPage() {
               {isWaitingForNotifications ? (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               ) : null}
-              Add Frame
+              ADD FRAME
             </Button>
           </div>
         </div>

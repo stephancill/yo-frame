@@ -8,13 +8,13 @@ export const FRAME_METADATA = {
   version: "next",
   imageUrl: `${process.env.APP_URL}/og.png`,
   button: {
-    title: "Launch Frame",
+    title: "Yo",
     action: {
       type: "launch_frame",
-      name: "Launch Frame",
+      name: "Launch Yo",
       url: process.env.APP_URL,
       splashImageUrl: `${process.env.APP_URL}/splash.png`,
-      splashBackgroundColor: "#f7f7f7",
+      splashBackgroundColor: "#361B54",
     },
   },
 };
