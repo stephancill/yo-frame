@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getUserData } from "@/lib/farcaster";
 import { redisCache } from "@/lib/redis";
 import { createAppClient, viemConnector } from "@farcaster/auth-client";
+import { sql } from "kysely";
 import { NextRequest } from "next/server";
 
 const selectUser = db.selectFrom("users").selectAll();
@@ -56,20 +57,39 @@ export async function POST(req: NextRequest) {
   } else {
     // Create user
     try {
-      // Create the new user
-      const newUser = await db
-        .insertInto("users")
-        .values({
-          fid,
-        })
-        .returningAll()
-        .executeTakeFirst();
+      // Create the new user and migrate messages in a transaction
+      dbUser = await db.transaction().execute(async (trx) => {
+        const newUser = await trx
+          .insertInto("users")
+          .values({
+            fid,
+          })
+          .returningAll()
+          .executeTakeFirst();
 
-      if (!newUser) {
+        if (!newUser) {
+          throw new Error("Failed to create user");
+        }
+
+        // Migrate unassigned messages with a single SQL statement
+        const statement = sql`
+          WITH moved_messages AS (
+            DELETE FROM unassigned_messages 
+            WHERE to_fid = ${fid}
+            RETURNING id, from_user_id, message, created_at
+          )
+          INSERT INTO messages (id, from_user_id, to_user_id, message, created_at)
+          SELECT id, from_user_id, '${newUser.id}', message, created_at
+          FROM moved_messages
+        `;
+        await statement.execute(db);
+
+        return newUser;
+      });
+
+      if (!dbUser) {
         throw new Error("Failed to create user");
       }
-
-      dbUser = newUser;
     } catch (error) {
       console.error(error);
 

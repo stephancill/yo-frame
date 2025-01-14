@@ -34,18 +34,16 @@ function formatLocalStorageSessionKey(fid: number) {
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<Context.FrameContext>();
 
   const {
     data: session,
-    isLoading: isLoadingSession,
     refetch: refetchSession,
     isFetching: isFetchingSession,
   } = useQuery({
-    queryKey: ["session"],
+    queryKey: ["session", context?.user.fid],
     queryFn: async () => {
       if (!context?.user?.fid) return null;
 
@@ -53,10 +51,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const storedSession = localStorage.getItem(
         formatLocalStorageSessionKey(context.user.fid)
       );
+
       if (storedSession) {
         const session = JSON.parse(storedSession) as Session;
 
         if (new Date(session.expiresAt).getTime() < Date.now()) {
+          console.log("Session expired, removing from localStorage");
+
           localStorage.removeItem(
             formatLocalStorageSessionKey(context.user.fid)
           );
@@ -73,8 +74,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const session = await signIn({
         ...result,
         challengeId,
-        referrerId:
-          searchParams.get("ref") || searchParams.get("referrer") || undefined,
       });
 
       // Store the session in localStorage
@@ -228,16 +227,14 @@ async function signIn({
   message,
   signature,
   challengeId,
-  referrerId,
 }: {
   message: string;
   signature: string;
   challengeId: string;
-  referrerId?: string;
 }): Promise<Session> {
   const response = await fetch("/api/sign-in", {
     method: "POST",
-    body: JSON.stringify({ message, signature, challengeId, referrerId }),
+    body: JSON.stringify({ message, signature, challengeId }),
   });
 
   if (!response.ok) {

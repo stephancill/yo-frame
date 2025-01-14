@@ -1,8 +1,159 @@
-import { Message, UserDataAddMessage, UserDataType } from "@farcaster/core";
+import {
+  CastType,
+  FarcasterNetwork,
+  makeCastAdd,
+  makeCastRemove,
+  makeUserDataAdd,
+  Message,
+  NobleEd25519Signer,
+  UserDataAddMessage,
+  UserDataType,
+} from "@farcaster/core";
+import { hexToBytes } from "@farcaster/frame-node";
 import { Configuration, NeynarAPIClient } from "@neynar/nodejs-sdk";
 import { type User as NeynarUser } from "@neynar/nodejs-sdk/build/api";
 import { getUserDataKey } from "./keys";
 import { redisCache } from "./redis";
+
+type CastTextSegment = string | number;
+
+export async function writeCast({
+  segments,
+  embedUrls,
+  parentUrl,
+}: {
+  segments: CastTextSegment[];
+  embedUrls: string[];
+  parentUrl?: string;
+}) {
+  const mentions: number[] = [];
+  const mentionsPositions: number[] = [];
+
+  const text = segments.reduce<string>((acc, segment) => {
+    if (typeof segment === "number") {
+      mentions.push(segment);
+      mentionsPositions.push(acc.length);
+      return acc;
+    }
+    return acc + segment;
+  }, "");
+
+  const signer = new NobleEd25519Signer(
+    hexToBytes(process.env.FARCASTER_BOT_SIGNER! as `0x${string}`)
+  );
+
+  if (process.env.NODE_ENV === "development" && !process.env.FARCASTER) {
+    console.log("Sending cast (skipped)", { text, embeds: embedUrls });
+    return;
+  }
+
+  const castAddMessage = await makeCastAdd(
+    {
+      text,
+      embeds: embedUrls.map((url) => ({ url })),
+      mentions,
+      mentionsPositions,
+      parentUrl,
+      type: CastType.CAST,
+      embedsDeprecated: [],
+    },
+    {
+      fid: parseInt(process.env.FARCASTER_BOT_FID!),
+      network: FarcasterNetwork.MAINNET,
+    },
+    signer
+  );
+
+  if (castAddMessage.isErr()) {
+    throw castAddMessage.error;
+  }
+
+  const castAdd = castAddMessage.value;
+
+  const responseJson = await submitMessage(castAdd);
+
+  return responseJson;
+}
+
+export async function writeUserData({
+  type,
+  value,
+}: {
+  type: UserDataType;
+  value: string;
+}) {
+  const signer = new NobleEd25519Signer(
+    hexToBytes(process.env.FARCASTER_BOT_SIGNER! as `0x${string}`)
+  );
+
+  const userDataMessage = await makeUserDataAdd(
+    {
+      type,
+      value,
+    },
+    {
+      fid: parseInt(process.env.FARCASTER_BOT_FID!),
+      network: FarcasterNetwork.MAINNET,
+    },
+    signer
+  );
+
+  if (userDataMessage.isErr()) {
+    throw userDataMessage.error;
+  }
+
+  const responseJson = await submitMessage(userDataMessage.value);
+
+  return responseJson;
+}
+export async function removeCast(targetHash: `0x${string}`) {
+  const signer = new NobleEd25519Signer(
+    hexToBytes(process.env.FARCASTER_BOT_SIGNER! as `0x${string}`)
+  );
+
+  const castRemoveMessage = await makeCastRemove(
+    {
+      targetHash: hexToBytes(targetHash),
+    },
+    {
+      fid: parseInt(process.env.FARCASTER_BOT_FID!),
+      network: FarcasterNetwork.MAINNET,
+    },
+    signer
+  );
+
+  if (castRemoveMessage.isErr()) {
+    throw castRemoveMessage.error;
+  }
+
+  const responseJson = await submitMessage(castRemoveMessage.value);
+
+  return responseJson;
+}
+
+async function submitMessage(message: Message) {
+  const messageEncoded = Message.encode(message).finish();
+
+  const response = await fetch(
+    `${process.env.HUB_REST_URL!}/v1/submitMessage`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream",
+        api_key: process.env.HUB_API_KEY || "",
+      },
+      body: messageEncoded,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to submit message: ${await response.text()}`);
+  }
+
+  const responseJson = await response.json();
+
+  return responseJson;
+}
 
 export async function getUserData(fid: number) {
   const res = await fetch(`${process.env.HUB_URL}/v1/userDataByFid?fid=${fid}`);

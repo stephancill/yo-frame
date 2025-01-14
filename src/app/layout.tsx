@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className="bg-purple-500 text-white max-w-[600px] mx-auto">
         <Provider>{children}</Provider>
       </body>
     </html>

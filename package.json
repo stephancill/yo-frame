@@ -10,7 +10,8 @@
     "migrate": "tsx src/scripts/migrate.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "workers": "tsx src/workers/index.ts",
-    "db:reset": "docker-compose down -v && docker-compose up -d"
+    "db:reset": "docker-compose down -v && docker-compose up -d",
+    "db:seed": "tsx src/scripts/seed.ts"
   },
   "dependencies": {
     "@bull-board/api": "^6.5.4",
@@ -21,6 +22,7 @@
     "@farcaster/frame-sdk": "^0.0.26",
     "@lucia-auth/adapter-postgresql": "^3.1.2",
     "@neynar/nodejs-sdk": "^2.7.0",
+    "@radix-ui/react-avatar": "^1.1.2",
     "@radix-ui/react-toast": "^1.2.4",
     "@sentry/nextjs": "^8",
     "@tanstack/react-query": "^5.62.7",
@@ -41,9 +43,11 @@
     "pg-cursor": "^2.12.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-intersection-observer": "^9.15.0",
     "siwe": "^2.3.2",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "use-debounce": "^10.0.4",
     "viem": "^2.21.57",
     "zod": "^3.24.1"
   },

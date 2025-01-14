@@ -39,11 +39,10 @@ export function withAuth<
 >(handler: UserRouteHandler<T>, options: {} = {}) {
   return async (req: NextRequest, context: T): Promise<Response> => {
     try {
-      const cookieHeader = req.headers.get("Cookie");
       const authorizationHeader = req.headers.get("Authorization");
-      const token =
-        lucia.readBearerToken(authorizationHeader ?? "") ||
-        lucia.readSessionCookie(cookieHeader ?? "");
+      const token = lucia.readBearerToken(authorizationHeader ?? "");
+
+      console.log("token", token);
 
       const result = await lucia.validateSession(token ?? "");
       if (!result.session) {
