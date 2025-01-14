@@ -9,6 +9,9 @@ import { useDebounce } from "use-debounce";
 import { UserRow } from "../components/UserRow";
 import { getRelativeTime } from "../lib/utils";
 import { useSession } from "../providers/SessionProvider";
+import { useWaitForNotifications } from "../hooks/use-wait-for-notifications";
+import { Button } from "../components/ui/button";
+import sdk from "@farcaster/frame-sdk";
 
 type Message = {
   id: string;
@@ -17,12 +20,6 @@ type Message = {
   fromFid: number;
   toFid: number;
   disabled: boolean;
-};
-
-type User = {
-  username: string;
-  displayName?: string;
-  pfp?: string;
 };
 
 type MessagesResponse = {
@@ -39,12 +36,19 @@ function getFidColor(fid: number): string {
 }
 
 export default function MessagesPage() {
-  const { authFetch, user, session } = useSession();
+  const { authFetch, user, session, context, refetchUser } = useSession();
+  const { mutate: waitForNotifications, isPending: isWaitingForNotifications } =
+    useWaitForNotifications();
 
   const [animatingFid, setAnimatingFid] = useState<number | null>(null);
   const [animationPhase, setAnimationPhase] = useState<
     "initial" | "starting" | "complete"
   >("initial");
+
+  const [showAddFrameButton, setShowAddFrameButton] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery] = useDebounce(searchQuery, 300);
 
   const { ref, inView } = useInView();
 
@@ -106,15 +110,6 @@ export default function MessagesPage() {
     },
   });
 
-  useEffect(() => {
-    if (inView && hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedQuery] = useDebounce(searchQuery, 300);
-
   const { data: searchResults, isLoading: isSearching } = useQuery({
     queryKey: ["search", debouncedQuery],
     queryFn: async () => {
@@ -127,6 +122,18 @@ export default function MessagesPage() {
     },
     enabled: !!debouncedQuery,
   });
+
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    if (context) {
+      setShowAddFrameButton(!context.client.added);
+    }
+  }, [context]);
 
   if (isLoading)
     return (
@@ -233,6 +240,37 @@ export default function MessagesPage() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {context && showAddFrameButton && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 flex justify-center z-50">
+          <div className="max-w-[400px] w-full">
+            <Button
+              size={"lg"}
+              className="text-lg p-4 w-full"
+              disabled={isWaitingForNotifications}
+              onClick={() => {
+                sdk.actions.addFrame().then((result) => {
+                  if (result.notificationDetails) {
+                    waitForNotifications(void 0, {
+                      onSuccess: () => {
+                        refetchUser();
+                        setShowAddFrameButton(false);
+                      },
+                      onError: () => {
+                        // TODO: show error
+                      },
+                    });
+                  }
+                });
+              }}
+            >
+              {isWaitingForNotifications ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : null}
+              Add Frame
+            </Button>
           </div>
         </div>
       )}
