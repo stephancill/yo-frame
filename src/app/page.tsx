@@ -2,7 +2,7 @@
 
 import { SearchedUser, UserDehydrated } from "@neynar/nodejs-sdk/build/api";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, MessageCircleOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { useDebounce } from "use-debounce";
@@ -65,7 +65,7 @@ export default function MessagesPage() {
     isFetchingNextPage,
     refetch: refetchMessages,
   } = useInfiniteQuery({
-    queryKey: ["messages"],
+    queryKey: ["messages", session?.id],
     queryFn: async ({ pageParam = null }) => {
       const url = new URL("/api/messages", window.location.origin);
       if (pageParam) url.searchParams.set("cursor", pageParam);
@@ -156,7 +156,7 @@ export default function MessagesPage() {
           placeholder="Search..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="text-4xl font-bold w-full px-4 py-6 focus:outline-none placeholder:text-gray-300 text-purple-500"
+          className="text-3xl font-bold w-full px-4 py-6 focus:outline-none placeholder:text-gray-300 text-purple-500 rounded-none"
         />
         {searchQuery && (
           <button
@@ -168,18 +168,20 @@ export default function MessagesPage() {
         )}
       </div>
 
-      {!searchQuery && data?.pages[0]?.messageCounts && (
-        <div className="p-4 flex space-x-12 text-3xl font-bold">
-          <div className="text-center w-1/2">
-            <div className="">{data.pages[0].messageCounts.outbound}</div>
-            <div className="text-sm">SENT</div>
+      {!searchQuery &&
+        data?.pages[0]?.messageCounts &&
+        data?.pages[0]?.messages.length > 0 && (
+          <div className="p-4 flex space-x-12 text-3xl font-bold">
+            <div className="text-center w-1/2">
+              <div className="">{data.pages[0].messageCounts.outbound}</div>
+              <div className="text-sm">SENT</div>
+            </div>
+            <div className="text-center w-1/2">
+              <div className="">{data.pages[0].messageCounts.inbound}</div>
+              <div className="text-sm">RECEIVED</div>
+            </div>
           </div>
-          <div className="text-center w-1/2">
-            <div className="">{data.pages[0].messageCounts.inbound}</div>
-            <div className="text-sm">RECEIVED</div>
-          </div>
-        </div>
-      )}
+        )}
 
       {searchQuery ? (
         <div className="w-full">
@@ -211,52 +213,57 @@ export default function MessagesPage() {
       ) : (
         <div>
           <div className="w-full">
-            <div>
-              {data?.pages.map((page, i) =>
-                page.messages.map((message) => {
-                  const otherUserFid =
-                    message.fromFid === user?.fid
-                      ? message.toFid
-                      : message.fromFid;
-                  const otherUser = page.users[otherUserFid];
-
-                  return (
-                    <UserRow
-                      key={message.id}
-                      user={otherUser}
-                      fid={otherUserFid}
-                      backgroundColor={getFidColor(otherUserFid)}
-                      isAnimating={animatingFid === otherUserFid}
-                      animationPhase={animationPhase}
-                      isError={mutation.isError}
-                      disabled={
-                        message.disabled ||
-                        mutation.isPending ||
-                        animatingFid !== null
-                      }
-                      isPending={mutation.isPending}
-                      timestamp={getRelativeTime(new Date(message.createdAt))}
-                      onClick={() => {
-                        if (!mutation.isPending && !animatingFid) {
-                          mutation.mutate(otherUserFid);
-                        }
-                      }}
-                    />
-                  );
-                })
-              )}
-
-              {/* Add loading indicator and intersection observer target */}
-              <div ref={ref} className="p-4 text-center">
-                {isFetchingNextPage ? (
-                  <div>Loading more...</div>
-                ) : hasNextPage ? (
-                  <div>Scroll for more</div>
-                ) : (
-                  <div>No more messages</div>
-                )}
+            {data?.pages[0]?.messages.length === 0 ? (
+              <div className="flex items-center justify-center min-h-[80vh] text-center p-8 text-white">
+                <div>
+                  <MessageCircleOff className="h-12 w-12 mx-auto mb-4" />
+                  <p className="text-xl font-bold uppercase">NO YO'S YET</p>
+                  <p className="mt-2 uppercase">Search for users to yo</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                {data?.pages.map((page, i) =>
+                  page.messages.map((message) => {
+                    const otherUserFid =
+                      message.fromFid === user?.fid
+                        ? message.toFid
+                        : message.fromFid;
+                    const otherUser = page.users[otherUserFid];
+
+                    return (
+                      <UserRow
+                        key={message.id}
+                        user={otherUser}
+                        fid={otherUserFid}
+                        backgroundColor={getFidColor(otherUserFid)}
+                        isAnimating={animatingFid === otherUserFid}
+                        animationPhase={animationPhase}
+                        isError={mutation.isError}
+                        disabled={
+                          message.disabled ||
+                          mutation.isPending ||
+                          animatingFid !== null
+                        }
+                        isPending={mutation.isPending}
+                        timestamp={getRelativeTime(new Date(message.createdAt))}
+                        onClick={() => {
+                          if (!mutation.isPending && !animatingFid) {
+                            mutation.mutate(otherUserFid);
+                          }
+                        }}
+                      />
+                    );
+                  })
+                )}
+
+                <div ref={ref} className="p-4 text-center">
+                  {isFetchingNextPage && (
+                    <Loader2 className="h-8 w-8 animate-spin text-white-500 mx-auto" />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

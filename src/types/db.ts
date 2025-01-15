@@ -5,6 +5,7 @@ export type UserRow = {
   fid: number;
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
+  registeredAt: Date | null;
   notificationUrl: string | null;
   notificationToken: string | null;
 };
@@ -23,17 +24,8 @@ export interface MessageRow {
   createdAt: Generated<Date>;
 }
 
-export interface UnassignedMessageRow {
-  id: Generated<string>;
-  fromUserId: string;
-  toFid: number;
-  message: string;
-  createdAt: Generated<Date>;
-}
-
 export type Tables = {
   users: UserRow;
   userSession: UserSessionRow;
   messages: MessageRow;
-  unassignedMessages: UnassignedMessageRow;
 };

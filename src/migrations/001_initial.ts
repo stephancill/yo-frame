@@ -13,6 +13,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn("updated_at", "timestamp", (col) =>
       col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
     )
+    .addColumn("registered_at", "timestamp")
     .addColumn("notification_url", "varchar")
     .addColumn("notification_token", "varchar")
     .execute();
@@ -32,27 +33,6 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn("created_at", "timestamp", (col) =>
       col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
     )
-    .execute();
-
-  await db.schema
-    .createTable("unassigned_messages")
-    .addColumn("id", "varchar", (col) =>
-      col.primaryKey().defaultTo(sql`gen_random_uuid()`)
-    )
-    .addColumn("from_user_id", "varchar", (col) =>
-      col.notNull().references("users.id").onDelete("cascade")
-    )
-    .addColumn("to_fid", "integer", (col) => col.notNull())
-    .addColumn("message", "text", (col) => col.notNull())
-    .addColumn("created_at", "timestamp", (col) =>
-      col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
-    )
-    .execute();
-
-  await db.schema
-    .createIndex("idx_unassigned_messages_to_fid")
-    .on("unassigned_messages")
-    .column("to_fid")
     .execute();
 
   await db.schema
@@ -115,7 +95,6 @@ export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropIndex("idx_user_session_user").execute();
   await db.schema.dropIndex("idx_messages_from_user").execute();
   await db.schema.dropIndex("idx_messages_from_user_to_user").execute();
-  await db.schema.dropIndex("idx_unassigned_messages_to_fid").execute();
 
   await db.schema.dropTable("user_session").execute();
   await db.schema.dropTable("unassigned_messages").execute();

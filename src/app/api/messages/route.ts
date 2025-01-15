@@ -133,39 +133,41 @@ export const POST = withAuth(async (req, user) => {
   }
 
   // Check if we have notification details
-  const targetUser = await db
+  let targetUser = await db
     .selectFrom("users")
     .selectAll()
     .where("fid", "=", targetFid)
     .executeTakeFirst();
 
-  let insertedMessage: any;
-
   if (!targetUser) {
-    // Insert into unassigned messages
-    insertedMessage = await db
-      .insertInto("unassignedMessages")
+    // Create user
+    targetUser = await db
+      .insertInto("users")
       .values({
-        fromUserId: user.id,
-        toFid: targetFid,
-        message: "yo",
+        fid: targetFid,
       })
       .returningAll()
       .executeTakeFirst();
-  } else {
-    insertedMessage = await db
-      .insertInto("messages")
-      .values({
-        fromUserId: user.id,
-        toUserId: targetUser.id,
-        message: "yo",
-      })
-      .returningAll()
-      .executeTakeFirst();
+
+    if (!targetUser) {
+      console.error("Failed to create user", { status: 500 });
+      return Response.json({ error: "Failed to create user" }, { status: 500 });
+    }
   }
 
+  const insertedMessage = await db
+    .insertInto("messages")
+    .values({
+      fromUserId: user.id,
+      toUserId: targetUser.id,
+      message: "yo",
+    })
+    .returningAll()
+    .executeTakeFirst();
+
   if (!insertedMessage) {
-    return new Response("Failed to send message", { status: 500 });
+    console.error("Failed to send message", { status: 500 });
+    return Response.json({ error: "Failed to send message" }, { status: 500 });
   }
 
   const userData = await withCache(`user:${targetFid}`, () =>

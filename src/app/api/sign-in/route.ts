@@ -1,9 +1,7 @@
 import { lucia } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getUserData } from "@/lib/farcaster";
 import { redisCache } from "@/lib/redis";
 import { createAppClient, viemConnector } from "@farcaster/auth-client";
-import { sql } from "kysely";
 import { NextRequest } from "next/server";
 
 const selectUser = db.selectFrom("users").selectAll();
@@ -45,12 +43,12 @@ export async function POST(req: NextRequest) {
 
   const fid = verifyResponse.fid;
 
-  let dbUser;
-
   // Check if the fid is already registered
   const existingUser = await selectUser
     .where("fid", "=", fid)
     .executeTakeFirst();
+
+  let dbUser: typeof existingUser;
 
   if (existingUser) {
     dbUser = existingUser;
@@ -70,22 +68,6 @@ export async function POST(req: NextRequest) {
         if (!newUser) {
           throw new Error("Failed to create user");
         }
-
-        // Migrate unassigned messages with a single SQL statement
-        const statement = sql`
-          WITH moved_messages AS (
-            DELETE FROM unassigned_messages 
-            WHERE to_fid = ${fid}
-            RETURNING id, from_user_id, message, created_at
-          )
-          INSERT INTO messages (id, from_user_id, to_user_id, message, created_at)
-          SELECT id, from_user_id, ${newUser.id}, message, created_at
-          FROM moved_messages
-        `;
-
-        console.log(statement.compile(db));
-
-        await statement.execute(db);
 
         return newUser;
       });
@@ -107,6 +89,16 @@ export async function POST(req: NextRequest) {
   if (!dbUser) {
     console.error("No db user found");
     return Response.json({ error: "Failed to create user" }, { status: 500 });
+  }
+
+  if (!dbUser.registeredAt) {
+    dbUser.registeredAt = new Date();
+    await db
+      .updateTable("users")
+      .set({ registeredAt: dbUser.registeredAt })
+      .where("id", "=", dbUser.id)
+      .returningAll()
+      .executeTakeFirst();
   }
 
   const session = await lucia.createSession(dbUser!.id, {});
