@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { writeUserData, removeCast } from "../lib/farcaster";
+import { writeUserData, removeCast, writeCast } from "../lib/farcaster";
 import { UserDataType } from "@farcaster/core";
 
 interface ProfileUpdateOptions {
@@ -95,6 +95,19 @@ async function removeCastById(castId: string) {
   }
 }
 
+async function writeCastWithEmbed(text: string, embedUrls: string[] = []) {
+  try {
+    console.log("Writing cast...");
+    const response = await writeCast({
+      segments: [text],
+      embedUrls,
+    });
+    console.log("Cast published:", response);
+  } catch (error) {
+    console.error("Error publishing cast:", error);
+  }
+}
+
 // Check if the script is being run directly
 if (require.main === module) {
   const [, , command, ...args] = process.argv;
@@ -119,10 +132,24 @@ if (require.main === module) {
       removeCastById(args[0]);
       break;
 
+    case "write-cast":
+      if (args.length < 1) {
+        console.error(
+          'Usage: tsx script.ts write-cast "Your cast text" [embed1,embed2,...]'
+        );
+        process.exit(1);
+      }
+      const castText = args[0];
+      const embedUrls = args[1] ? args[1].split(",") : [];
+      writeCastWithEmbed(castText, embedUrls);
+      break;
+
     default:
-      console.error("Unknown command. Use 'update-profile' or 'remove-cast'.");
+      console.error(
+        "Unknown command. Use 'update-profile', 'remove-cast', or 'write-cast'."
+      );
       process.exit(1);
   }
 }
 
-export { updateProfile, removeCastById };
+export { updateProfile, removeCastById, writeCastWithEmbed };

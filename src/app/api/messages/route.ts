@@ -193,6 +193,10 @@ export const POST = withAuth(async (req, user) => {
         ", someone sent you a yo. Check the your yobox to see who it's from.",
       ],
       embedUrls: [process.env.APP_URL],
+      parentCastId: {
+        fid: parseInt(process.env.FARCASTER_BOT_FID!),
+        hash: "0x0e245dd1db062b2db03ab47aebee41a407a06a56",
+      },
     });
   }
 

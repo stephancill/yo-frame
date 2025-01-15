@@ -21,10 +21,15 @@ export async function writeCast({
   segments,
   embedUrls,
   parentUrl,
+  parentCastId,
 }: {
   segments: CastTextSegment[];
   embedUrls: string[];
   parentUrl?: string;
+  parentCastId?: {
+    fid: number;
+    hash: `0x${string}`;
+  };
 }) {
   const mentions: number[] = [];
   const mentionsPositions: number[] = [];
@@ -56,6 +61,12 @@ export async function writeCast({
       parentUrl,
       type: CastType.CAST,
       embedsDeprecated: [],
+      parentCastId: parentCastId
+        ? {
+            fid: parentCastId.fid,
+            hash: hexToBytes(parentCastId.hash),
+          }
+        : undefined,
     },
     {
       fid: parseInt(process.env.FARCASTER_BOT_FID!),
