@@ -25,6 +25,13 @@ export async function GET() {
 
 /** Domain associations for different environments. Default is signed by @stephancill and is valid for localhost */
 const accountAssociations = {
+  "https://yo.steer.fun": {
+    header:
+      "eyJmaWQiOjE2ODksInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgyNzM4QjIxY0I5NTIwMzM4RjlBMzc1YzNiOTcxQjE3NzhhZTEwMDRhIn0",
+    payload: "eyJkb21haW4iOiJ5by5zdGVlci5mdW4ifQ",
+    signature:
+      "MHhjODdlOGNhZGIxMDZmYjFmNTU5NjMyNDFhMDFkMmM5N2YwM2FlOTlhYWRlMDBiNmY2YjYyZjZkNmYzNzEwMzM4MTZjMjZmMjc5N2EyYzVmMDIwMDJmNmVlMTQ0Y2VkNWYyNjg1ZTU1NmQxNjNmZjA5ZWFmMDE5MDljZDU4ZDBjNzFi",
+  },
   "http://localhost:3000": {
     header:
       "eyJmaWQiOjE2ODksInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgyNzM4QjIxY0I5NTIwMzM4RjlBMzc1YzNiOTcxQjE3NzhhZTEwMDRhIn0",
