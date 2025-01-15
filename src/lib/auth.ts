@@ -42,8 +42,6 @@ export function withAuth<
       const authorizationHeader = req.headers.get("Authorization");
       const token = lucia.readBearerToken(authorizationHeader ?? "");
 
-      console.log("token", token);
-
       const result = await lucia.validateSession(token ?? "");
       if (!result.session) {
         throw new AuthError("Invalid session");

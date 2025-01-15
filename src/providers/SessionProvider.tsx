@@ -4,7 +4,8 @@ import { User } from "@/types/user";
 import sdk, { Context, FrameNotificationDetails } from "@farcaster/frame-sdk";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Session } from "lucia";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import {
   createContext,
   ReactNode,
@@ -189,6 +190,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       router.push(`/onboarding?redirect=${redirectUrl}`);
     }
   }, [user, isLoadingUser, isError, router, isSDKLoaded]);
+
+  useEffect(() => {
+    if (user) {
+      posthog.identify(user.id, {
+        fid: user.fid,
+      });
+      // Sentry.setUser({
+      //   id: user.id,
+      //   fid: user.fid,
+      // });
+    }
+  }, [user]);
 
   return (
     <SessionContext.Provider

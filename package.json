@@ -42,6 +42,7 @@
     "ox": "^0.4.4",
     "pg": "^8.13.1",
     "pg-cursor": "^2.12.1",
+    "posthog-js": "^1.206.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-intersection-observer": "^9.15.0",
