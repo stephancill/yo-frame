@@ -79,9 +79,12 @@ export async function POST(req: NextRequest) {
             RETURNING id, from_user_id, message, created_at
           )
           INSERT INTO messages (id, from_user_id, to_user_id, message, created_at)
-          SELECT id, from_user_id, '${newUser.id}', message, created_at
+          SELECT id, from_user_id, ${newUser.id}, message, created_at
           FROM moved_messages
         `;
+
+        console.log(statement.compile(db));
+
         await statement.execute(db);
 
         return newUser;

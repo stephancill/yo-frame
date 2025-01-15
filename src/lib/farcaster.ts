@@ -134,17 +134,14 @@ export async function removeCast(targetHash: `0x${string}`) {
 async function submitMessage(message: Message) {
   const messageEncoded = Message.encode(message).finish();
 
-  const response = await fetch(
-    `${process.env.HUB_REST_URL!}/v1/submitMessage`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        api_key: process.env.HUB_API_KEY || "",
-      },
-      body: messageEncoded,
-    }
-  );
+  const response = await fetch(`${process.env.HUB_URL!}/v1/submitMessage`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      api_key: process.env.HUB_API_KEY || "",
+    },
+    body: messageEncoded,
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to submit message: ${await response.text()}`);
