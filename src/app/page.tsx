@@ -26,6 +26,10 @@ type MessagesResponse = {
   messages: Message[];
   users: Record<number, UserDehydrated>;
   nextCursor: string | null;
+  messageCounts: {
+    inbound: number;
+    outbound: number;
+  };
 };
 
 function getFidColor(fid: number): string {
@@ -163,6 +167,19 @@ export default function MessagesPage() {
           </button>
         )}
       </div>
+
+      {!searchQuery && data?.pages[0]?.messageCounts && (
+        <div className="p-4 flex space-x-12 text-3xl font-bold">
+          <div className="text-center w-1/2">
+            <div className="">{data.pages[0].messageCounts.outbound}</div>
+            <div className="text-sm">SENT</div>
+          </div>
+          <div className="text-center w-1/2">
+            <div className="">{data.pages[0].messageCounts.inbound}</div>
+            <div className="text-sm">RECEIVED</div>
+          </div>
+        </div>
+      )}
 
       {searchQuery ? (
         <div className="w-full">

@@ -68,6 +68,19 @@ export const GET = withAuth(async (req, user) => {
   const hasMore = messages.length > limit;
   const results = messages.slice(0, limit);
 
+  // Add message counts query
+  const messageCounts = await db
+    .selectFrom("messages")
+    .select([
+      sql<number>`COUNT(CASE WHEN from_user_id = ${user.id} THEN 1 END)`.as(
+        "outbound"
+      ),
+      sql<number>`COUNT(CASE WHEN to_user_id = ${user.id} THEN 1 END)`.as(
+        "inbound"
+      ),
+    ])
+    .executeTakeFirst();
+
   return new Response(
     JSON.stringify({
       messages: results,
@@ -75,6 +88,10 @@ export const GET = withAuth(async (req, user) => {
       nextCursor: hasMore
         ? results[results.length - 1].createdAt.toISOString()
         : null,
+      messageCounts: {
+        inbound: Number(messageCounts?.inbound || 0),
+        outbound: Number(messageCounts?.outbound || 0),
+      },
     }),
     { status: 200 }
   );
