@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
         await sendFrameNotification({
           token: event.notificationDetails.token,
           url: event.notificationDetails.url,
-          title: "Welcome to Frame",
-          body: "This frame has been added.",
+          title: "Welcome to Yo",
+          body: "You will now receive notifications from Yo.",
           targetUrl: process.env.APP_URL,
         });
       } else {
