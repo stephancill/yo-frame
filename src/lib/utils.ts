@@ -28,3 +28,40 @@ export function getRelativeTime(d1: Date, d2: Date = new Date()): string {
 
   return "0s";
 }
+
+export function getBaseUrl() {
+  const url = new URL(
+    typeof window !== "undefined" ? window.location.href : process.env.APP_URL!
+  );
+  url.pathname = "";
+  url.search = "";
+  return url;
+}
+
+export function createWarpcastDcUrl(
+  fid: number | string,
+  text: string
+): string {
+  const url = new URL(`https://warpcast.com/~/inbox/create/${fid}`);
+  url.searchParams.set("text", text);
+  return url.toString();
+}
+
+export function createWarpcastComposeUrl(
+  text: string,
+  embeds: string[] = [],
+  parentCastHash?: `0x${string}`
+): string {
+  const url = new URL("https://warpcast.com/~/compose");
+  url.searchParams.append("text", text);
+
+  embeds.forEach((embed) => {
+    url.searchParams.append("embeds[]", embed);
+  });
+
+  if (parentCastHash) {
+    url.searchParams.append("parentCastHash", parentCastHash);
+  }
+
+  return url.toString();
+}

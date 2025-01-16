@@ -170,12 +170,11 @@ export const POST = withAuth(async (req, user) => {
     return Response.json({ error: "Failed to send message" }, { status: 500 });
   }
 
-  const userData = await withCache(`user:${targetFid}`, () =>
-    getUserData(user.fid)
-  );
+  const [userData] = await getUserDatasCached([targetFid]);
 
-  const username = userData[UserDataType.USERNAME] || `!${user.fid}`;
+  const username = userData.username || `!${user.fid}`;
 
+  let userNotified = false;
   if (targetUser?.notificationUrl && targetUser?.notificationToken) {
     await sendFrameNotification({
       token: targetUser.notificationToken,
@@ -185,6 +184,7 @@ export const POST = withAuth(async (req, user) => {
       notificationId: insertedMessage.id,
       targetUrl: `${process.env.APP_URL}`,
     });
+    userNotified = true;
   } else {
     // Send with bot
     await writeCast({
@@ -200,5 +200,8 @@ export const POST = withAuth(async (req, user) => {
     });
   }
 
-  return Response.json(insertedMessage, { status: 200 });
+  return Response.json(
+    { message: insertedMessage, userNotified, targetUserData: userData },
+    { status: 200 }
+  );
 });

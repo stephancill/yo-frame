@@ -7,11 +7,23 @@ import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { useDebounce } from "use-debounce";
 import { UserRow } from "../components/UserRow";
-import { getRelativeTime } from "../lib/utils";
+import {
+  createWarpcastComposeUrl,
+  createWarpcastDcUrl,
+  getBaseUrl,
+  getRelativeTime,
+} from "../lib/utils";
 import { useSession } from "../providers/SessionProvider";
 import { useWaitForNotifications } from "../hooks/use-wait-for-notifications";
 import { Button } from "../components/ui/button";
 import sdk from "@farcaster/frame-sdk";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 
 type Message = {
   id: string;
@@ -78,6 +90,12 @@ export default function MessagesPage() {
     enabled: !!session,
   });
 
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
+  const [dialogUser, setDialogUser] = useState<UserDehydrated | null>(null);
+
+  const [showSelfNotificationDialog, setShowSelfNotificationDialog] =
+    useState(false);
+
   const mutation = useMutation({
     mutationFn: async (otherFid: number) => {
       setAnimatingFid(otherFid);
@@ -90,9 +108,17 @@ export default function MessagesPage() {
         body: JSON.stringify({ targetFid: otherFid }),
       });
       if (!res.ok) throw new Error("Failed to send message");
-      return res.json();
+      const data = await res.json();
+
+      // Show dialog if user wasn't notified
+      if (!data.userNotified) {
+        setShowNotificationDialog(true);
+        setDialogUser(data.targetUserData);
+      }
+
+      return data;
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       // Complete animation
       setAnimationPhase("complete");
 
@@ -103,6 +129,11 @@ export default function MessagesPage() {
 
       // Clear search query
       setSearchQuery("");
+
+      // Show self-notification dialog if user hasn't added the frame
+      if (context && showAddFrameButton) {
+        setShowSelfNotificationDialog(true);
+      }
 
       refetchMessages();
     },
@@ -293,11 +324,114 @@ export default function MessagesPage() {
               {isWaitingForNotifications ? (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               ) : null}
-              ADD FRAME
+              ADD FRAME FOR ALERTS
             </Button>
           </div>
         </div>
       )}
+      <Dialog
+        open={showNotificationDialog}
+        onOpenChange={(v) => {
+          setShowNotificationDialog(v);
+          if (!v) {
+            setDialogUser(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-purple-500">
+              User hasn't enabled notifications
+            </DialogTitle>
+            <DialogDescription>
+              Would you like to draft a cast or send a direct message to let
+              them know?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-4 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!dialogUser) return;
+                const frameDomain = getBaseUrl().hostname;
+                const frameDeeplinkUrl = `https://www.warpcast.com/~/frames/launch?domain=${frameDomain}`;
+                const text = `Hey, I sent you a yo. ${frameDeeplinkUrl}`;
+                navigator.clipboard.writeText(text);
+              }}
+              className="text-black"
+            >
+              Copy
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!dialogUser) return;
+                const frameDomain = getBaseUrl().hostname;
+                const frameDeeplinkUrl = `https://www.warpcast.com/~/frames/launch?domain=${frameDomain}`;
+                const text = `Hey, I sent you a yo. ${frameDeeplinkUrl}`;
+                const url = createWarpcastDcUrl(dialogUser.fid, text);
+                sdk.actions.openUrl(url);
+                setShowNotificationDialog(false);
+              }}
+              className="text-black"
+            >
+              Draft DC
+            </Button>
+            <Button
+              onClick={() => {
+                if (!dialogUser) return;
+                const frameUrl = getBaseUrl().toString();
+                const text = `Hey, @${dialogUser.username} I sent you a yo.`;
+                const url = createWarpcastComposeUrl(text, [frameUrl]);
+                sdk.actions.openUrl(url);
+                setShowNotificationDialog(false);
+              }}
+            >
+              Draft Cast
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={showSelfNotificationDialog}
+        onOpenChange={setShowSelfNotificationDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-purple-500">
+              Enable Notifications
+            </DialogTitle>
+            <DialogDescription>
+              Add this frame to get notified when someone sends you a yo!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button
+              onClick={() => {
+                sdk.actions.addFrame().then((result) => {
+                  if (result.notificationDetails) {
+                    waitForNotifications(void 0, {
+                      onSuccess: () => {
+                        refetchUser();
+                        setShowSelfNotificationDialog(false);
+                      },
+                      onError: () => {
+                        // TODO: show error
+                      },
+                    });
+                  }
+                });
+              }}
+              disabled={isWaitingForNotifications}
+            >
+              {isWaitingForNotifications ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : null}
+              Add Frame
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
