@@ -14,6 +14,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 interface SessionContextType {
   user: User | null | undefined;
@@ -126,7 +127,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   });
 
   const { mutate: setNotificationsMutation } = useMutation({
-    mutationFn: setNotificationDetails,
+    mutationFn: async (notificationDetails: FrameNotificationDetails) => {
+      const response = await authFetch("/api/user/notifications", {
+        method: "PATCH",
+        body: JSON.stringify(notificationDetails),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to set notification details");
+      }
+
+      return response.json();
+    },
     onSuccess: () => {
       refetchUser();
     },
@@ -196,10 +208,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       posthog.identify(user.id, {
         fid: user.fid,
       });
-      // Sentry.setUser({
-      //   id: user.id,
-      //   fid: user.fid,
-      // });
+      Sentry.setUser({
+        id: user.id,
+        fid: user.fid,
+      });
     }
   }, [user]);
 
@@ -261,19 +273,6 @@ async function signIn({
   }
 
   return session;
-}
-
-async function setNotificationDetails(
-  notificationDetails: FrameNotificationDetails
-): Promise<void> {
-  const response = await fetch("/api/user/notifications", {
-    method: "PATCH",
-    body: JSON.stringify(notificationDetails),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to set notification details");
-  }
 }
 
 export function useSession() {

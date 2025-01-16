@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AUTH_SESSION_COOKIE_NAME } from "./constants";
 import { getAuthAdapter } from "./db";
 import { AuthError } from "./errors";
+import * as Sentry from "@sentry/nextjs";
 
 const adapter = getAuthAdapter();
 
@@ -46,6 +47,11 @@ export function withAuth<
       if (!result.session) {
         throw new AuthError("Invalid session");
       }
+
+      Sentry.setUser({
+        id: result.user.id,
+        fid: result.user.fid,
+      });
 
       return handler(req, result.user, context);
     } catch (error) {
