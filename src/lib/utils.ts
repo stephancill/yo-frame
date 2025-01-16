@@ -65,3 +65,11 @@ export function createWarpcastComposeUrl(
 
   return url.toString();
 }
+
+export function getFidColor(fid: number): string {
+  // Use golden ratio (φ ≈ 1.618033988749895) for optimal color distribution
+  const goldenRatio = 0.618033988749895;
+  const hue = ((fid * goldenRatio) % 1) * 360;
+
+  return `hsl(${Math.floor(hue)}, 70%, 55%)`;
+}

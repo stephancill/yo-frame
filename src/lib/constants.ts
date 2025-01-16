@@ -12,7 +12,7 @@ export const FRAME_METADATA = {
     action: {
       type: "launch_frame",
       name: "Launch Yo",
-      url: process.env.APP_URL,
+      url: `${process.env.APP_URL}`,
       splashImageUrl: `${process.env.APP_URL}/splash.png`,
       splashBackgroundColor: "#361B54",
     },
