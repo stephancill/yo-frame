@@ -401,26 +401,11 @@ export function App() {
               User hasn't enabled notifications
             </DialogTitle>
             <DialogDescription>
-              Would you like to draft a cast or send a direct message to let
-              them know?
+              Would you like to send a direct message to let them know?
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-4 justify-end">
             <Button
-              variant="outline"
-              onClick={() => {
-                if (!dialogUser) return;
-                const frameDomain = getBaseUrl().hostname;
-                const frameDeeplinkUrl = `https://www.warpcast.com/~/frames/launch?domain=${frameDomain}`;
-                const text = `Hey, I sent you a yo. ${frameDeeplinkUrl}`;
-                navigator.clipboard.writeText(text);
-              }}
-              className="text-black"
-            >
-              Copy
-            </Button>
-            <Button
-              variant="outline"
               onClick={() => {
                 if (!dialogUser) return;
                 const frameDomain = getBaseUrl().hostname;
@@ -430,21 +415,8 @@ export function App() {
                 sdk.actions.openUrl(url);
                 setShowNotificationDialog(false);
               }}
-              className="text-black"
             >
               Draft DC
-            </Button>
-            <Button
-              onClick={() => {
-                if (!dialogUser) return;
-                const frameUrl = getBaseUrl().toString();
-                const text = `Hey, @${dialogUser.username} I sent you a yo.`;
-                const url = createWarpcastComposeUrl(text, [frameUrl]);
-                sdk.actions.openUrl(url);
-                setShowNotificationDialog(false);
-              }}
-            >
-              Draft Cast
             </Button>
           </div>
         </DialogContent>
