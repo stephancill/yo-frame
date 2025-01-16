@@ -1,3 +1,5 @@
+import { FRAME_METADATA } from "../../../lib/constants";
+
 export async function GET() {
   const appUrl = process.env.APP_URL;
 
@@ -9,13 +11,13 @@ export async function GET() {
     accountAssociation: accountAssociations[appUrl],
     frame: {
       version: "1",
-      name: "Frame",
+      name: "Yo",
       iconUrl: `${appUrl}/icon.png`,
       homeUrl: appUrl,
-      imageUrl: `${appUrl}/og.png`,
-      buttonTitle: "launch",
-      splashImageUrl: `${appUrl}/splash.png`,
-      splashBackgroundColor: "#f7f7f7",
+      imageUrl: FRAME_METADATA.imageUrl,
+      buttonTitle: FRAME_METADATA.button.title,
+      splashImageUrl: FRAME_METADATA.button.action.splashImageUrl,
+      splashBackgroundColor: FRAME_METADATA.button.action.splashBackgroundColor,
       webhookUrl: `${appUrl}/api/webhooks/farcaster`,
     },
   };
