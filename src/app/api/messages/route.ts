@@ -189,7 +189,7 @@ export const POST = withAuth(async (req, user) => {
     // Send with bot
     await writeCast({
       segments: [
-        user.fid,
+        targetUser.fid,
         ", someone sent you a yo. Check the your yobox to see who it's from.",
       ],
       embedUrls: [process.env.APP_URL],
