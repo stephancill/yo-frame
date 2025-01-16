@@ -3,7 +3,7 @@
 import sdk from "@farcaster/frame-sdk";
 import { SearchedUser, UserDehydrated } from "@neynar/nodejs-sdk/build/api";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, MessageCircleOff, X } from "lucide-react";
+import { Loader2, MessageCircleOff, Share, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
@@ -177,12 +177,10 @@ export function App() {
       const res = await authFetch(`/api/users/${sheetUserId}`);
       if (!res.ok) throw new Error("Failed to fetch user");
       return res.json() as Promise<{
-        fid: number;
-        id: string;
         userData: UserDehydrated;
       }>;
     },
-    enabled: !!sheetUserId,
+    enabled: !!sheetUserId && !!user,
   });
 
   useEffect(() => {
@@ -201,6 +199,8 @@ export function App() {
       setShowAddFrameButton(!context.client.added);
     }
   }, [context]);
+
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   if (isLoading || isSessionLoading)
     return (
@@ -345,7 +345,7 @@ export function App() {
                 </div>
               </div>
             ))}
-          {context && showAddFrameButton && (
+          {context && showAddFrameButton ? (
             <Button
               size={"lg"}
               className="text-lg p-4 flex-1"
@@ -370,6 +370,18 @@ export function App() {
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               ) : null}
               ADD FRAME FOR ALERTS
+            </Button>
+          ) : (
+            <Button
+              size={"lg"}
+              variant="ghost"
+              className="flex-1 text-lg p-4"
+              onClick={() => setShowShareDialog(true)}
+            >
+              <Share
+                className="h-12 w-12"
+                style={{ width: "36px", height: "36px" }}
+              />
             </Button>
           )}
         </div>
@@ -477,6 +489,42 @@ export function App() {
           </div>
         </DialogContent>
       </Dialog>
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-purple-500">
+              Share Your Yo Link
+            </DialogTitle>
+            <DialogDescription>
+              Copy your personal yo link to share with others
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-4 justify-end">
+            <Button
+              variant="outline"
+              className="text-black"
+              onClick={() => {
+                const url = `${getBaseUrl()}?user=${user?.fid}`;
+                navigator.clipboard.writeText(url);
+                setShowShareDialog(false);
+              }}
+            >
+              Copy
+            </Button>
+            <Button
+              onClick={() => {
+                const url = `${getBaseUrl()}?user=${user?.fid}`;
+                const text = `Send me a yo`;
+                const castUrl = createWarpcastComposeUrl(text, [url]);
+                sdk.actions.openUrl(castUrl);
+                setShowShareDialog(false);
+              }}
+            >
+              Draft Cast
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Sheet
         open={!!sheetUserId}
         onOpenChange={() => {
@@ -514,12 +562,14 @@ export function App() {
                   <Button
                     className="mt-4 w-full uppercase font-bold text-xl py-8"
                     style={{
-                      backgroundColor: getFidColor(sheetUserQuery.data.fid),
+                      backgroundColor: getFidColor(
+                        sheetUserQuery.data.userData.fid
+                      ),
                     }}
                     disabled={mutation.isPending || animatingFid !== null}
                     onClick={() => {
                       if (!mutation.isPending && !animatingFid) {
-                        mutation.mutate(sheetUserQuery.data!.fid);
+                        mutation.mutate(sheetUserQuery.data!.userData.fid);
                       }
                     }}
                   >
