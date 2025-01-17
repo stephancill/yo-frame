@@ -10,5 +10,7 @@ export const notificationsBulkQueue = new Queue(NOTIFICATIONS_BULK_QUEUE_NAME, {
       type: "fixed",
       delay: 30_000,
     },
+    removeOnComplete: 1000,
+    removeOnFail: 1000,
   },
 });
