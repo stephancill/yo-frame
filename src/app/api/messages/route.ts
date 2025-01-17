@@ -170,13 +170,12 @@ export const POST = withAuth(async (req, user) => {
     return Response.json({ error: "Failed to send message" }, { status: 500 });
   }
 
-  const [targetUserData, userData] = await getUserDatasCached([
-    targetFid,
-    user.fid,
-  ]);
+  const users = await getUserDatasCached([targetFid, user.fid]);
+  const targetUserData = users.find((u) => u.fid === targetFid);
+  const userData = users.find((u) => u.fid === user.fid);
 
-  const targetUsername = targetUserData.username || `!${targetFid}`;
-  const userUsername = userData.username || `!${user.fid}`;
+  const targetUsername = targetUserData?.username || `!${targetFid}`;
+  const userUsername = userData?.username || `!${user.fid}`;
 
   let userNotified = false;
   if (targetUser?.notificationUrl && targetUser?.notificationToken) {
@@ -193,7 +192,7 @@ export const POST = withAuth(async (req, user) => {
     // Send with bot
     await writeCast({
       segments: [
-        targetUserData.fid,
+        targetFid,
         ", someone sent you a yo. Check the your yobox to see who it's from.",
       ],
       embedUrls: [process.env.APP_URL],
