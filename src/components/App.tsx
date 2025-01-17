@@ -133,6 +133,12 @@ export function App() {
       // Complete animation
       setAnimationPhase("complete");
 
+      // If mutation was triggered from sheet, show "Sent!" for 1 second before closing
+      if (sheetUserId) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setSheetUserId(null);
+      }
+
       // Reset after delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setAnimationPhase("initial");
@@ -547,8 +553,11 @@ export function App() {
                   >
                     {mutation.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    Send Yo
+                    ) : animationPhase === "complete" && sheetUserId ? (
+                      "Yo!"
+                    ) : (
+                      "Send Yo"
+                    )}
                   </Button>
                 </div>
               </SheetHeader>
