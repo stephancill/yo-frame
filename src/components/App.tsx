@@ -107,7 +107,7 @@ export function App() {
   const [showSelfNotificationDialog, setShowSelfNotificationDialog] =
     useState(false);
 
-  const mutation = useMutation({
+  const sendMessage = useMutation({
     mutationFn: async (otherFid: number) => {
       setAnimatingFid(otherFid);
       setAnimationPhase("starting");
@@ -252,13 +252,16 @@ export function App() {
                 backgroundColor={getFidColor(user.fid)}
                 isAnimating={animatingFid === user.fid}
                 animationPhase={animationPhase}
-                isError={mutation.isError}
-                disabled={mutation.isPending || animatingFid !== null}
-                isPending={mutation.isPending}
+                isError={sendMessage.isError}
+                disabled={sendMessage.isPending || animatingFid !== null}
+                isPending={sendMessage.isPending}
                 onClick={() => {
-                  if (!mutation.isPending && !animatingFid) {
-                    mutation.mutate(user.fid);
+                  if (!sendMessage.isPending && !animatingFid) {
+                    sendMessage.mutate(user.fid);
                   }
+                }}
+                onLongPress={() => {
+                  sdk.actions.viewProfile({ fid: user.fid });
                 }}
               />
             ))
@@ -293,18 +296,21 @@ export function App() {
                         backgroundColor={getFidColor(otherUserFid)}
                         isAnimating={animatingFid === otherUserFid}
                         animationPhase={animationPhase}
-                        isError={mutation.isError}
+                        isError={sendMessage.isError}
                         disabled={
                           message.disabled ||
-                          mutation.isPending ||
+                          sendMessage.isPending ||
                           animatingFid !== null
                         }
-                        isPending={mutation.isPending}
+                        isPending={sendMessage.isPending}
                         timestamp={getRelativeTime(new Date(message.createdAt))}
                         onClick={() => {
-                          if (!mutation.isPending && !animatingFid) {
-                            mutation.mutate(otherUserFid);
+                          if (!sendMessage.isPending && !animatingFid) {
+                            sendMessage.mutate(otherUserFid);
                           }
+                        }}
+                        onLongPress={() => {
+                          sdk.actions.viewProfile({ fid: otherUserFid });
                         }}
                       />
                     );
@@ -544,14 +550,14 @@ export function App() {
                         sheetUserQuery.data.userData.fid
                       ),
                     }}
-                    disabled={mutation.isPending || animatingFid !== null}
+                    disabled={sendMessage.isPending || animatingFid !== null}
                     onClick={() => {
-                      if (!mutation.isPending && !animatingFid) {
-                        mutation.mutate(sheetUserQuery.data!.userData.fid);
+                      if (!sendMessage.isPending && !animatingFid) {
+                        sendMessage.mutate(sheetUserQuery.data!.userData.fid);
                       }
                     }}
                   >
-                    {mutation.isPending ? (
+                    {sendMessage.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : animationPhase === "complete" && sheetUserId ? (
                       "Yo!"

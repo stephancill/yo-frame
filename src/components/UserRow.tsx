@@ -3,6 +3,7 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { twMerge } from "tailwind-merge";
 import { SearchedUser, UserDehydrated } from "@neynar/nodejs-sdk/build/api";
+import { useLongPress } from "../hooks/use-long-press";
 
 type UserRowProps = {
   user: SearchedUser | UserDehydrated;
@@ -15,6 +16,7 @@ type UserRowProps = {
   isPending?: boolean;
   timestamp?: string;
   onClick?: () => void;
+  onLongPress?: () => void;
 };
 
 export function UserRow({
@@ -28,13 +30,21 @@ export function UserRow({
   isPending = false,
   timestamp,
   onClick,
+  onLongPress,
 }: UserRowProps) {
+  const longPressBind = useLongPress(
+    onLongPress ??
+      (() => {
+        console.log("long press aaa");
+      }),
+    onClick ?? (() => {})
+  );
   return (
     <button
-      onClick={onClick}
+      {...longPressBind}
       disabled={disabled}
       className={twMerge(
-        "block w-full text-left hover:brightness-95 relative",
+        "block w-full text-left hover:brightness-95 relative prevent-select",
         (disabled || isPending) && "cursor-not-allowed opacity-50",
         isAnimating && isError && "animate-[shake_0.5s_ease-in-out]"
       )}
