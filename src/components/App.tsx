@@ -139,6 +139,8 @@ export function App() {
         setSheetUserId(null);
       }
 
+      refetchMessages();
+
       // Reset after delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setAnimationPhase("initial");
@@ -151,8 +153,6 @@ export function App() {
       if (context && showAddFrameButton) {
         setShowSelfNotificationDialog(true);
       }
-
-      refetchMessages();
     },
     onError: () => {
       setAnimationPhase("initial");
