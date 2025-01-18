@@ -50,6 +50,8 @@ export const useLongPress = (
     onMouseUp: (e: MouseEvent) => clear(e),
     onMouseLeave: (e: MouseEvent) => clear(e, false),
     onTouchEnd: (e: TouchEvent) => clear(e),
+    onMouseMove: (e: MouseEvent) => clear(e, false),
+    onTouchMove: (e: TouchEvent) => clear(e, false),
   };
 };
 
