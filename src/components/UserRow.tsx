@@ -32,9 +32,14 @@ export function UserRow({
   onClick,
   onLongPress,
 }: UserRowProps) {
+  const longPressBind = useLongPress(
+    onLongPress ?? (() => {}),
+    onClick ?? (() => {})
+  );
+
   return (
     <button
-      onClick={onClick}
+      {...longPressBind}
       disabled={disabled}
       className={twMerge(
         "block w-full text-left hover:brightness-95 relative prevent-select",

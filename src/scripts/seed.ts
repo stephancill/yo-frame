@@ -1,6 +1,37 @@
 import { db } from "../lib/db";
+import readline from "readline";
+
+async function confirm(message: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(message, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes");
+    });
+  });
+}
 
 async function main() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.error("ERROR: DATABASE_URL environment variable is not set");
+    process.exit(1);
+  }
+
+  console.log(`Database URL: ${databaseUrl}`);
+  const shouldProceed = await confirm(
+    "Are you sure you want to proceed with seeding? This will clear existing data. (y/N) "
+  );
+
+  if (!shouldProceed) {
+    console.log("Seeding cancelled");
+    process.exit(0);
+  }
+
   // Clear existing data
   await db.deleteFrom("messages").execute();
   await db.deleteFrom("users").execute();
@@ -55,4 +86,7 @@ async function main() {
   console.log(`Created ${messages.length} messages`);
 }
 
-main();
+main().catch((error) => {
+  console.error("Error seeding database:", error);
+  process.exit(1);
+});
