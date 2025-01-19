@@ -282,7 +282,7 @@ export function App() {
       )}
       <div className="fixed bottom-0 left-0 right-0 p-4 flex justify-center z-50">
         <div
-          className={`max-w-[400px] w-full flex items-center gap-4 ${
+          className={`max-w-[400px] w-full flex items-center gap-2 ${
             !context || !showAddFrameButton ? "justify-center" : ""
           }`}
         >
@@ -300,7 +300,7 @@ export function App() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-lg font-bold bg-purple-500 ">
+              <div className="flex items-center gap-2 text-lg font-bold bg-purple-500 py-4 px-2">
                 <div className="flex flex-col items-center">
                   <span>{data.pages[0].messageCounts.outbound}</span>
                 </div>
