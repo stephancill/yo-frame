@@ -34,6 +34,7 @@ import {
   getRelativeTime,
 } from "../lib/utils";
 import { useSession } from "../providers/SessionProvider";
+import { useSendMessageMutation } from "../lib/messages";
 
 type Message = {
   id: string;
@@ -67,11 +68,6 @@ export function App() {
   const { mutate: waitForNotifications, isPending: isWaitingForNotifications } =
     useWaitForNotifications();
 
-  const [animatingFid, setAnimatingFid] = useState<number | null>(null);
-  const [animationPhase, setAnimationPhase] = useState<
-    "initial" | "starting" | "complete"
-  >("initial");
-
   const [showAddFrameButton, setShowAddFrameButton] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,9 +75,12 @@ export function App() {
 
   const { ref, inView } = useInView();
 
+  const sendMessageMutation = useSendMessageMutation();
+
   const {
     data,
     isLoading,
+    isFetching,
     error,
     fetchNextPage,
     hasNextPage,
@@ -106,61 +105,6 @@ export function App() {
 
   const [showSelfNotificationDialog, setShowSelfNotificationDialog] =
     useState(false);
-
-  const sendMessage = useMutation({
-    mutationFn: async (otherFid: number) => {
-      setAnimatingFid(otherFid);
-      setAnimationPhase("starting");
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      const res = await authFetch("/api/messages", {
-        method: "POST",
-        body: JSON.stringify({ targetFid: otherFid }),
-      });
-      if (!res.ok) throw new Error("Failed to send message");
-      const data = await res.json();
-
-      // Show dialog if user wasn't notified
-      if (!data.userNotified) {
-        setShowNotificationDialog(true);
-        setDialogUser(data.targetUserData);
-      }
-
-      return data;
-    },
-    onSuccess: async (data) => {
-      // Complete animation
-      setAnimationPhase("complete");
-
-      // If mutation was triggered from sheet, show "Sent!" for 1 second before closing
-      if (sheetUserId) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setSheetUserId(null);
-      }
-
-      refetchMessages();
-
-      // Reset after delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setAnimationPhase("initial");
-      setAnimatingFid(null);
-
-      // Clear search query
-      setSearchQuery("");
-
-      // Show self-notification dialog if user hasn't added the frame
-      if (context && showAddFrameButton) {
-        setShowSelfNotificationDialog(true);
-      }
-    },
-    onError: () => {
-      setAnimationPhase("initial");
-      setTimeout(() => {
-        setAnimatingFid(null);
-      }, 500); // Duration of shake animation
-    },
-  });
 
   const { data: searchResults, isLoading: isSearching } = useQuery({
     queryKey: ["search", debouncedQuery],
@@ -208,6 +152,12 @@ export function App() {
 
   const [showShareDialog, setShowShareDialog] = useState(false);
 
+  useEffect(() => {
+    if (searchQuery.length === 0) {
+      refetchMessages();
+    }
+  }, [searchQuery]);
+
   if (isLoading || isSessionLoading)
     return (
       <div className="flex justify-center p-8">
@@ -250,15 +200,15 @@ export function App() {
                 user={user}
                 fid={user.fid}
                 backgroundColor={getFidColor(user.fid)}
-                isAnimating={animatingFid === user.fid}
-                animationPhase={animationPhase}
-                isError={sendMessage.isError}
-                disabled={sendMessage.isPending || animatingFid !== null}
-                isPending={sendMessage.isPending}
-                onClick={() => {
-                  if (!sendMessage.isPending && !animatingFid) {
-                    sendMessage.mutate(user.fid);
+                disabled={false}
+                onMessageSent={() => {
+                  if (context && showAddFrameButton) {
+                    setShowSelfNotificationDialog(true);
                   }
+                }}
+                onShowNotification={(userData) => {
+                  setShowNotificationDialog(true);
+                  setDialogUser(userData);
                 }}
                 onLongPress={() => {
                   sdk.actions.viewProfile({ fid: user.fid });
@@ -278,6 +228,10 @@ export function App() {
                   <p className="mt-2 uppercase">Search for users to yo</p>
                 </div>
               </div>
+            ) : isFetching ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-white-500" />
+              </div>
             ) : (
               <div>
                 {data?.pages.map((page, i) =>
@@ -294,20 +248,17 @@ export function App() {
                         user={otherUser}
                         fid={otherUserFid}
                         backgroundColor={getFidColor(otherUserFid)}
-                        isAnimating={animatingFid === otherUserFid}
-                        animationPhase={animationPhase}
-                        isError={sendMessage.isError}
-                        disabled={
-                          message.disabled ||
-                          sendMessage.isPending ||
-                          animatingFid !== null
-                        }
-                        isPending={sendMessage.isPending}
+                        disabled={message.disabled}
                         timestamp={getRelativeTime(new Date(message.createdAt))}
-                        onClick={() => {
-                          if (!sendMessage.isPending && !animatingFid) {
-                            sendMessage.mutate(otherUserFid);
+                        onMessageSent={() => {
+                          setSearchQuery("");
+                          if (context && showAddFrameButton) {
+                            setShowSelfNotificationDialog(true);
                           }
+                        }}
+                        onShowNotification={(userData) => {
+                          setShowNotificationDialog(true);
+                          setDialogUser(userData);
                         }}
                         onLongPress={() => {
                           sdk.actions.viewProfile({ fid: otherUserFid });
@@ -550,17 +501,24 @@ export function App() {
                         sheetUserQuery.data.userData.fid
                       ),
                     }}
-                    disabled={sendMessage.isPending || animatingFid !== null}
+                    disabled={
+                      sendMessageMutation.isSuccess ||
+                      sendMessageMutation.isPending ||
+                      sendMessageMutation.isError
+                    }
                     onClick={() => {
-                      if (!sendMessage.isPending && !animatingFid) {
-                        sendMessage.mutate(sheetUserQuery.data!.userData.fid);
+                      if (!sendMessageMutation.isPending) {
+                        sendMessageMutation.mutate({
+                          fid: sheetUserQuery.data!.userData.fid,
+                          authFetch,
+                        });
                       }
                     }}
                   >
-                    {sendMessage.isPending ? (
+                    {sendMessageMutation.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : animationPhase === "complete" && sheetUserId ? (
-                      "Yo!"
+                    ) : sendMessageMutation.isSuccess && sheetUserId ? (
+                      "Yo sent!"
                     ) : (
                       "Send Yo"
                     )}

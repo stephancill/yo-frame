@@ -1,21 +1,21 @@
 "use client";
 
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { twMerge } from "tailwind-merge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchedUser, UserDehydrated } from "@neynar/nodejs-sdk/build/api";
+import { useState } from "react";
+import { twMerge } from "tailwind-merge";
 import { useLongPress } from "../hooks/use-long-press";
+import { useSendMessageMutation } from "../lib/messages";
+import { useSession } from "../providers/SessionProvider";
 
 type UserRowProps = {
   user: SearchedUser | UserDehydrated;
   fid: number;
   backgroundColor: string;
-  isAnimating?: boolean;
-  animationPhase?: "initial" | "starting" | "complete";
-  isError?: boolean;
   disabled?: boolean;
-  isPending?: boolean;
   timestamp?: string;
-  onClick?: () => void;
+  onMessageSent?: () => void;
+  onShowNotification?: (userData: UserDehydrated) => void;
   onLongPress?: () => void;
 };
 
@@ -23,47 +23,84 @@ export function UserRow({
   user,
   fid,
   backgroundColor,
-  isAnimating = false,
-  animationPhase = "initial",
-  isError = false,
   disabled = false,
-  isPending = false,
   timestamp,
-  onClick,
+  onMessageSent,
+  onShowNotification,
   onLongPress,
 }: UserRowProps) {
-  const longPressBind = useLongPress(
-    onLongPress ?? (() => {}),
-    onClick ?? (() => {})
-  );
+  const [animationPhase, setAnimationPhase] = useState<
+    "initial" | "starting" | "complete"
+  >("initial");
+  const { authFetch } = useSession();
+
+  const sendMessageMutation = useSendMessageMutation();
+
+  const longPressBind = useLongPress(onLongPress ?? (() => {}), () => {
+    if (!sendMessageMutation.isPending && animationPhase === "initial") {
+      setAnimationPhase("starting");
+      sendMessageMutation.mutate(
+        {
+          fid,
+          authFetch,
+        },
+        {
+          onSuccess(data, variables, context) {
+            if (
+              !data.userNotified &&
+              data.targetUserData &&
+              onShowNotification
+            ) {
+              onShowNotification(data.targetUserData);
+            }
+
+            setAnimationPhase("complete");
+            if (onMessageSent) {
+              onMessageSent();
+            }
+          },
+          onError(error, variables, context) {
+            setAnimationPhase("initial");
+          },
+        }
+      );
+    }
+  });
 
   return (
     <button
       {...longPressBind}
-      disabled={disabled}
+      disabled={
+        disabled ||
+        sendMessageMutation.isPending ||
+        animationPhase === "complete"
+      }
       className={twMerge(
         "block w-full text-left hover:brightness-95 relative prevent-select",
-        (disabled || isPending) && "cursor-not-allowed opacity-50",
-        isAnimating && isError && "animate-[shake_0.5s_ease-in-out]"
+        (disabled ||
+          sendMessageMutation.isPending ||
+          animationPhase === "complete") &&
+          "cursor-not-allowed opacity-50",
+        animationPhase === "initial" &&
+          sendMessageMutation.isError &&
+          "animate-[shake_0.5s_ease-in-out]"
       )}
       style={{ backgroundColor }}
     >
-      {isAnimating && (
-        <div
-          className={twMerge(
-            "absolute bottom-0 left-0 h-1 transition-[width] duration-300",
-            isError ? "bg-red-400/50" : "bg-white/50"
-          )}
-          style={{
-            width:
-              animationPhase === "starting"
-                ? "10%"
-                : animationPhase === "complete"
-                ? "100%"
-                : "0%",
-          }}
-        />
-      )}
+      <div
+        className={twMerge(
+          "absolute bottom-0 left-0 h-1 transition-[width] duration-300",
+          sendMessageMutation.isError && "bg-red-400/50"
+        )}
+        style={{
+          width:
+            animationPhase === "starting"
+              ? "10%"
+              : animationPhase === "complete"
+              ? "100%"
+              : "0%",
+        }}
+      />
 
       <div className="flex items-center gap-4 p-6">
         <div className="flex-1">
@@ -86,8 +123,8 @@ export function UserRow({
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-white uppercase">
-                    {isAnimating && animationPhase === "complete" ? (
-                      <span className="animate-fade-out">yo!</span>
+                    {animationPhase === "complete" ? (
+                      <span>yo sent!</span>
                     ) : (
                       user?.username || `!${fid}`
                     )}
