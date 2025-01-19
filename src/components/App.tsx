@@ -187,6 +187,12 @@ export function App() {
         )}
       </div>
 
+      {isFetching && (
+        <div className="flex justify-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-white-500" />
+        </div>
+      )}
+
       {searchQuery ? (
         <div className="w-full">
           {isSearching ? (
@@ -227,10 +233,6 @@ export function App() {
                   <p className="text-xl font-bold uppercase">NO YO'S YET</p>
                   <p className="mt-2 uppercase">Search for users to yo</p>
                 </div>
-              </div>
-            ) : isFetching ? (
-              <div className="flex justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-white-500" />
               </div>
             ) : (
               <div>
