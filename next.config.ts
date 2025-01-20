@@ -2,7 +2,10 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // https://github.com/taskforcesh/bullmq/issues/2696#issuecomment-2389490402
+  experimental: {
+    serverComponentsExternalPackages: ["bullmq"],
+  },
 };
 
 export default withSentryConfig(nextConfig, {

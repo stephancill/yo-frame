@@ -87,6 +87,12 @@ export async function up(db: Kysely<any>): Promise<void> {
     .on("messages")
     .column("created_at")
     .execute();
+
+  await db.schema
+    .createIndex("idx_users_created_at")
+    .on("users")
+    .column("created_at")
+    .execute();
 }
 
 export async function down(db: Kysely<any>): Promise<void> {
@@ -95,6 +101,7 @@ export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropIndex("idx_user_session_user").execute();
   await db.schema.dropIndex("idx_messages_from_user").execute();
   await db.schema.dropIndex("idx_messages_from_user_to_user").execute();
+  await db.schema.dropIndex("idx_users_created_at").execute();
 
   await db.schema.dropTable("user_session").execute();
   await db.schema.dropTable("unassigned_messages").execute();

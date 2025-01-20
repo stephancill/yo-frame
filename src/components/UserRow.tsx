@@ -14,6 +14,7 @@ type UserRowProps = {
   backgroundColor: string;
   disabled?: boolean;
   timestamp?: string;
+  messageCount?: number;
   onMessageSent?: () => void;
   onShowNotification?: (userData: UserDehydrated) => void;
   onLongPress?: () => void;
@@ -25,6 +26,7 @@ export function UserRow({
   backgroundColor,
   disabled = false,
   timestamp,
+  messageCount,
   onMessageSent,
   onShowNotification,
   onLongPress,
@@ -115,18 +117,29 @@ export function UserRow({
                         {user.username?.[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                  ) : (
+                  ) : user ? (
                     <Avatar className="w-5 h-5">
                       <AvatarFallback>{user.username}</AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <Avatar className="w-5 h-5">
+                      <AvatarFallback>{fid}</AvatarFallback>
                     </Avatar>
                   )}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white uppercase">
+                  <h3 className="text-xl font-bold text-white uppercase flex items-center">
                     {animationPhase === "complete" ? (
                       <span>yo sent!</span>
                     ) : (
-                      user?.username || `!${fid}`
+                      <>
+                        {user?.username || `!${fid}`}
+                        {messageCount !== undefined && (
+                          <span className="ml-2 text-sm opacity-75">
+                            ({messageCount})
+                          </span>
+                        )}
+                      </>
                     )}
                   </h3>
                 </div>

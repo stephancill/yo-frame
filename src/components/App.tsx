@@ -35,6 +35,7 @@ import {
 } from "../lib/utils";
 import { useSession } from "../providers/SessionProvider";
 import { useSendMessageMutation } from "../lib/messages";
+import Link from "next/link";
 
 type Message = {
   id: string;
@@ -43,6 +44,7 @@ type Message = {
   fromFid: number;
   toFid: number;
   disabled: boolean;
+  messageCount: number;
 };
 
 type MessagesResponse = {
@@ -228,10 +230,14 @@ export function App() {
           <div className="w-full">
             {data?.pages[0]?.messages.length === 0 ? (
               <div className="flex items-center justify-center min-h-[80vh] text-center p-8 text-white">
-                <div>
+                <div className="flex flex-col items-center gap-4">
                   <MessageCircleOff className="h-12 w-12 mx-auto mb-4" />
                   <p className="text-xl font-bold uppercase">NO YO'S YET</p>
-                  <p className="mt-2 uppercase">Search for users to yo</p>
+                  <Link href="/friends">
+                    <Button variant="secondary" className="font-medium">
+                      See who's already on yo →
+                    </Button>
+                  </Link>
                 </div>
               </div>
             ) : (
@@ -252,6 +258,7 @@ export function App() {
                         backgroundColor={getFidColor(otherUserFid)}
                         disabled={message.disabled}
                         timestamp={getRelativeTime(new Date(message.createdAt))}
+                        messageCount={message.messageCount}
                         onMessageSent={() => {
                           setSearchQuery("");
                           if (context && showAddFrameButton) {
@@ -270,9 +277,21 @@ export function App() {
                   })
                 )}
 
-                <div ref={ref} className="p-4 text-center mb-10">
+                <div ref={ref} className="p-4 text-center mb-40 mt-5">
                   {isFetchingNextPage && (
                     <Loader2 className="h-8 w-8 animate-spin text-white-500 mx-auto" />
+                  )}
+                  {!isFetchingNextPage && (
+                    <div className="flex flex-col items-center gap-2">
+                      <h3 className="text-lg font-semibold">
+                        Looking for your friends?
+                      </h3>
+                      <Link href="/friends">
+                        <Button variant="secondary" className="font-medium">
+                          See who's already on yo →
+                        </Button>
+                      </Link>
+                    </div>
                   )}
                 </div>
               </div>

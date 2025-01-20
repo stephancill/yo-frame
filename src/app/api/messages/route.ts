@@ -5,8 +5,7 @@ import { notifyUsers } from "@/lib/notifications";
 import { sql } from "kysely";
 
 export const GET = withAuth(async (req, user) => {
-  const { searchParams } = new URL(req.url);
-  const cursor = searchParams.get("cursor");
+  const cursor = req.nextUrl.searchParams.get("cursor");
   const limit = 50;
 
   // Subquery to get the most recent message for each conversation
@@ -29,6 +28,11 @@ export const GET = withAuth(async (req, user) => {
               LEAST("from_user"."id", "to_user"."id"),
               GREATEST("from_user"."id", "to_user"."id")
           )`.as("maxCreatedAt"),
+          sql<number>`COUNT(*) OVER (
+            PARTITION BY 
+              LEAST("from_user"."id", "to_user"."id"),
+              GREATEST("from_user"."id", "to_user"."id")
+          )`.as("messageCount"),
           sql<boolean>`
             "messages"."from_user_id" = ${user.id} 
             AND "messages"."created_at" > NOW() - INTERVAL '1 day'

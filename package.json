@@ -16,6 +16,7 @@
   "dependencies": {
     "@bull-board/api": "^6.5.4",
     "@bull-board/express": "^6.5.4",
+    "@duneanalytics/client-sdk": "^0.2.5",
     "@farcaster/auth-client": "^0.3.0",
     "@farcaster/core": "^0.15.6",
     "@farcaster/frame-node": "^0.0.10",

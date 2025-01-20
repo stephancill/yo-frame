@@ -12,6 +12,11 @@ import {
 import { hexToBytes } from "@farcaster/frame-node";
 import { Configuration, NeynarAPIClient } from "@neynar/nodejs-sdk";
 import { type User as NeynarUser } from "@neynar/nodejs-sdk/build/api";
+import {
+  QueryParameter,
+  DuneClient,
+  RunQueryArgs,
+} from "@duneanalytics/client-sdk";
 import { getUserDataKey } from "./keys";
 import { redisCache } from "./redis";
 
@@ -237,4 +242,25 @@ export async function getUserDatasCached(
   await multi.exec();
 
   return [...cachedUsers, ...res.users];
+}
+
+export async function getMutuals(fid: number) {
+  const client = new DuneClient(process.env.DUNE_API_KEY!);
+  const opts: RunQueryArgs = {
+    queryId: 4546070,
+    query_parameters: [QueryParameter.number("fid", fid)],
+  };
+
+  const rows = await client
+    .runQuery(opts)
+    .then(
+      (executionResult) =>
+        executionResult.result?.rows as { fid: number }[] | undefined
+    );
+
+  if (!rows) {
+    throw new Error("Failed to fetch mutuals");
+  }
+
+  return rows;
 }
