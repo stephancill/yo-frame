@@ -107,6 +107,13 @@ export function UserRow({
       <div className="flex items-center gap-4 p-6">
         <div className="flex-1">
           <div className="flex justify-between items-center">
+            {messageCount !== undefined && (
+              <span className="text-sm text-white/90 absolute left-4">
+                {sendMessageMutation.isSuccess
+                  ? Number(messageCount) + 1
+                  : messageCount}
+              </span>
+            )}
             <div className="flex-1 text-center">
               <div className="flex justify-center items-center gap-1">
                 <div>
@@ -132,14 +139,7 @@ export function UserRow({
                     {animationPhase === "complete" ? (
                       <span>yo sent!</span>
                     ) : (
-                      <>
-                        {user?.username || `!${fid}`}
-                        {messageCount !== undefined && (
-                          <span className="ml-2 text-sm opacity-75">
-                            ({messageCount})
-                          </span>
-                        )}
-                      </>
+                      user?.username || `!${fid}`
                     )}
                   </h3>
                 </div>

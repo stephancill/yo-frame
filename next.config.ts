@@ -3,9 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // https://github.com/taskforcesh/bullmq/issues/2696#issuecomment-2389490402
-  experimental: {
-    serverComponentsExternalPackages: ["bullmq"],
-  },
+  serverExternalPackages: ["bullmq"],
 };
 
 export default withSentryConfig(nextConfig, {

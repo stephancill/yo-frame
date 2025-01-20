@@ -45,13 +45,17 @@ export const GET = withAuth(async (req, user) => {
     query = query.where("users.createdAt", "<", new Date(cursor));
   }
 
-  const mutualsWithNotifications = await query.execute();
+  const mutualsWithNotifications: Awaited<ReturnType<typeof query.execute>> =
+    mutuals.length > 0 ? await query.execute() : [];
 
   // Check if there are more results
   const hasMore = mutualsWithNotifications.length > limit;
   const results = mutualsWithNotifications.slice(0, limit);
 
-  const userDatas = await getUserDatasCached(results.map((m) => m.fid));
+  const userDatas =
+    mutualsWithNotifications.length > 0
+      ? await getUserDatasCached(results.map((m) => m.fid))
+      : [];
 
   const users = userDatas.reduce((acc, m) => {
     acc[m.fid] = m;

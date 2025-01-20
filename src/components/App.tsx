@@ -284,7 +284,7 @@ export function App() {
                   {!isFetchingNextPage && (
                     <div className="flex flex-col items-center gap-2">
                       <h3 className="text-lg font-semibold">
-                        Looking for your friends?
+                        Looking for yo' friends?
                       </h3>
                       <Link href="/friends">
                         <Button variant="secondary" className="font-medium">

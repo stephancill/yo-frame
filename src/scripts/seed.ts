@@ -45,7 +45,13 @@ async function main() {
   // Create users
   const users = await db
     .insertInto("users")
-    .values(fids.map((fid) => ({ fid })))
+    .values(
+      fids.map((fid) => ({
+        fid,
+        notificationToken: fid % 3 !== 0 ? "test" : null,
+        notificationUrl: fid % 3 !== 0 ? "http://example.com" : null,
+      }))
+    )
     .returningAll()
     .execute();
 
