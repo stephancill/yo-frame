@@ -3,7 +3,7 @@
 import sdk from "@farcaster/frame-sdk";
 import { SearchedUser, UserDehydrated } from "@neynar/nodejs-sdk/build/api";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, MessageCircleOff, Share, X } from "lucide-react";
+import { Loader2, MessageCircleOff, RefreshCcw, Share, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
@@ -270,7 +270,7 @@ export function App() {
                   })
                 )}
 
-                <div ref={ref} className="p-4 text-center">
+                <div ref={ref} className="p-4 text-center mb-10">
                   {isFetchingNextPage && (
                     <Loader2 className="h-8 w-8 animate-spin text-white-500 mx-auto" />
                   )}
