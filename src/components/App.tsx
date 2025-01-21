@@ -107,6 +107,8 @@ export function App() {
 
   const [showSelfNotificationDialog, setShowSelfNotificationDialog] =
     useState(false);
+  const [notShowSelfNotificationDialog, setNotShowSelfNotificationDialog] =
+    useState(false);
 
   const { data: searchResults, isLoading: isSearching } = useQuery({
     queryKey: ["search", debouncedQuery],
@@ -406,8 +408,14 @@ export function App() {
         </DialogContent>
       </Dialog>
       <Dialog
-        open={showSelfNotificationDialog}
-        onOpenChange={setShowSelfNotificationDialog}
+        open={showSelfNotificationDialog && !notShowSelfNotificationDialog}
+        onOpenChange={(v) => {
+          setShowSelfNotificationDialog(v);
+          console.log("onOpenChange", v);
+          if (!v) {
+            setNotShowSelfNotificationDialog(true);
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>
