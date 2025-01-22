@@ -204,6 +204,8 @@ export const POST = withAuth(async (req, user) => {
     });
 
     userNotified = true;
+  } else if (targetUser.notificationType === "hourly") {
+    userNotified = true;
   }
 
   return Response.json(
