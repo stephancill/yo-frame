@@ -2,13 +2,14 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2, Trophy, ArrowLeft } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useSession } from "../providers/SessionProvider";
 import { twMerge } from "tailwind-merge";
 import Link from "next/link";
 import { Button } from "./ui/button";
+import { UserSheet } from "./UserSheet";
 
 type LeaderboardEntry = {
   fid: number;
@@ -37,13 +38,18 @@ function LeaderboardRow({
   entry,
   user,
   isCurrentUser,
+  onUserClick,
 }: {
   entry: LeaderboardEntry;
   user: { username: string; displayName?: string; pfp_url: string };
   isCurrentUser: boolean;
+  onUserClick: () => void;
 }) {
   return (
-    <div className="flex items-center gap-4 p-6 relative">
+    <div
+      className="flex items-center gap-4 p-6 relative cursor-pointer hover:bg-gray-900/50"
+      onClick={onUserClick}
+    >
       <div className="absolute left-4 font-bold text-lg">
         {entry.rank === 1 ? (
           <Trophy className="h-6 w-6 text-yellow-500" />
@@ -98,6 +104,7 @@ function LeaderboardRow({
 export function Leaderboard() {
   const { authFetch, user } = useSession();
   const { ref, inView } = useInView();
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const {
     data,
@@ -154,6 +161,7 @@ export function Leaderboard() {
               entry={currentUser}
               user={data.pages[0].users[currentUser.fid]}
               isCurrentUser={true}
+              onUserClick={() => setSelectedUserId(currentUser.fid.toString())}
             />
           </div>
         )}
@@ -184,6 +192,7 @@ export function Leaderboard() {
                     entry={entry}
                     user={user}
                     isCurrentUser={entry.fid === currentUser?.fid}
+                    onUserClick={() => setSelectedUserId(entry.fid.toString())}
                   />
                 );
               })
@@ -197,6 +206,11 @@ export function Leaderboard() {
           )}
         </div>
       </div>
+
+      <UserSheet
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+      />
     </div>
   );
 }
