@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { db } from "@/lib/db";
 import { getUserDatasCached } from "@/lib/farcaster";
 import { notifyUsers } from "@/lib/notifications";

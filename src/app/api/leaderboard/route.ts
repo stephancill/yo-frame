@@ -65,7 +65,9 @@ export const GET = withAuth(async (req, user) => {
     .executeTakeFirst();
 
   // Get user data for all FIDs
-  const fids = Array.from(new Set([...leaderboard.map((entry) => entry.fid)]));
+  const fids = Array.from(
+    new Set([...leaderboard.map((entry) => entry.fid), user.fid])
+  );
   const userDatas = await getUserDatasCached(fids);
   const users = userDatas.reduce((acc, userData) => {
     acc[userData.fid] = userData;

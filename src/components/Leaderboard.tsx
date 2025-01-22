@@ -79,7 +79,9 @@ function LeaderboardRow({
                   </Avatar>
                 ) : (
                   <Avatar className="w-5 h-5">
-                    <AvatarFallback>{user.username}</AvatarFallback>
+                    <AvatarFallback>
+                      {user ? user.username : "?"}
+                    </AvatarFallback>
                   </Avatar>
                 )}
               </div>
@@ -102,7 +104,7 @@ function LeaderboardRow({
 }
 
 export function Leaderboard() {
-  const { authFetch, user } = useSession();
+  const { authFetch } = useSession();
   const { ref, inView } = useInView();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
@@ -155,7 +157,7 @@ export function Leaderboard() {
 
       <div className="w-full">
         {/* Current User Stats */}
-        {currentUser && (
+        {currentUser && data.pages[0].users[currentUser.fid] && (
           <div className="bg-black z-10 border-b border-gray-800">
             <LeaderboardRow
               entry={currentUser}
@@ -186,7 +188,7 @@ export function Leaderboard() {
             {data?.pages.map((page) =>
               page.leaderboard.map((entry) => {
                 const user = page.users[entry.fid];
-                return (
+                return user ? (
                   <LeaderboardRow
                     key={entry.fid}
                     entry={entry}
@@ -194,7 +196,7 @@ export function Leaderboard() {
                     isCurrentUser={entry.fid === currentUser?.fid}
                     onUserClick={() => setSelectedUserId(entry.fid.toString())}
                   />
-                );
+                ) : null;
               })
             )}
           </div>
