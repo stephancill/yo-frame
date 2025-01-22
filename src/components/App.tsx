@@ -10,6 +10,7 @@ import {
   Share,
   X,
   Bell,
+  UserRoundSearch,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -62,6 +63,7 @@ type Message = {
   toFid: number;
   disabled: boolean;
   messageCount: number;
+  notificationsEnabled: boolean;
 };
 
 type MessagesResponse = {
@@ -149,6 +151,10 @@ export function App() {
       if (!res.ok) throw new Error("Failed to fetch user");
       return res.json() as Promise<{
         userData: UserDehydrated;
+        messageCounts?: {
+          inbound: number;
+          outbound: number;
+        };
       }>;
     },
     enabled: !!sheetUserId && !!user,
@@ -270,7 +276,7 @@ export function App() {
                   setDialogUser(userData);
                 }}
                 onLongPress={() => {
-                  sdk.actions.viewProfile({ fid: user.fid });
+                  setSheetUserId(String(user.fid));
                 }}
               />
             ))
@@ -308,6 +314,7 @@ export function App() {
                         fid={otherUserFid}
                         backgroundColor={getFidColor(otherUserFid)}
                         disabled={message.disabled}
+                        isNotificationsEnabled={message.notificationsEnabled}
                         timestamp={getRelativeTime(new Date(message.createdAt))}
                         messageCount={message.messageCount}
                         onMessageSent={() => {
@@ -321,7 +328,7 @@ export function App() {
                           setDialogUser(userData);
                         }}
                         onLongPress={() => {
-                          sdk.actions.viewProfile({ fid: otherUserFid });
+                          setSheetUserId(String(otherUserFid));
                         }}
                       />
                     );
@@ -654,7 +661,7 @@ export function App() {
           setSheetUserId(null);
         }}
       >
-        <SheetContent side="bottom" className="text-black h-[300px]">
+        <SheetContent side="bottom" className="text-black min-h-[300px]">
           {sheetUserId && sheetUserQuery.isLoading ? (
             <>
               <SheetTitle className="text-xl"></SheetTitle>
@@ -682,35 +689,72 @@ export function App() {
                       @{sheetUserQuery.data.userData.username}
                     </SheetDescription>
                   </div>
-                  <Button
-                    className="mt-4 w-full uppercase font-bold text-xl py-8"
-                    style={{
-                      backgroundColor: getFidColor(
-                        sheetUserQuery.data.userData.fid
-                      ),
-                    }}
-                    disabled={
-                      sendMessageMutation.isSuccess ||
-                      sendMessageMutation.isPending ||
-                      sendMessageMutation.isError
-                    }
-                    onClick={() => {
-                      if (!sendMessageMutation.isPending) {
-                        sendMessageMutation.mutate({
-                          fid: sheetUserQuery.data!.userData.fid,
-                          authFetch,
-                        });
+                  {sheetUserQuery.data.messageCounts && (
+                    <div className="flex space-x-12 text-xl font-bold">
+                      <div className="text-center">
+                        <div>
+                          {formatNumber(
+                            sheetUserQuery.data.messageCounts.outbound
+                          )}
+                        </div>
+                        <div className="text-sm">SENT</div>
+                      </div>
+                      <div className="text-center">
+                        <div>
+                          {formatNumber(
+                            sendMessageMutation.isSuccess
+                              ? sheetUserQuery.data.messageCounts.inbound + 1
+                              : sheetUserQuery.data.messageCounts.inbound
+                          )}
+                        </div>
+                        <div className="text-sm">RECEIVED</div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-row w-full items-center mt-4 ">
+                    <Button
+                      className="flex-grow uppercase font-bold text-xl py-8"
+                      style={{
+                        backgroundColor: getFidColor(
+                          sheetUserQuery.data.userData.fid
+                        ),
+                      }}
+                      disabled={
+                        sendMessageMutation.isSuccess ||
+                        sendMessageMutation.isPending ||
+                        sendMessageMutation.isError
                       }
-                    }}
-                  >
-                    {sendMessageMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : sendMessageMutation.isSuccess && sheetUserId ? (
-                      "Yo sent!"
-                    ) : (
-                      "Send Yo"
-                    )}
-                  </Button>
+                      onClick={() => {
+                        if (!sendMessageMutation.isPending) {
+                          sendMessageMutation.mutate({
+                            fid: sheetUserQuery.data!.userData.fid,
+                            authFetch,
+                          });
+                        }
+                      }}
+                    >
+                      {sendMessageMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : sendMessageMutation.isSuccess && sheetUserId ? (
+                        "Yo sent!"
+                      ) : (
+                        "Send Yo"
+                      )}
+                    </Button>
+                    <Button
+                      className="font-bold text-xl p-8 bg-gray-200 hover:bg-gray-300 flex-shrink"
+                      onClick={() => {
+                        sdk.actions.viewProfile({
+                          fid: sheetUserQuery.data!.userData.fid,
+                        });
+                      }}
+                    >
+                      <UserRoundSearch
+                        className="h-4 w-4 text-gray-500"
+                        style={{ width: "24px", height: "24px" }}
+                      />
+                    </Button>
+                  </div>
                 </div>
               </SheetHeader>
             )

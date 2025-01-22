@@ -7,6 +7,7 @@ import { twMerge } from "tailwind-merge";
 import { useLongPress } from "../hooks/use-long-press";
 import { useSendMessageMutation } from "../lib/messages";
 import { useSession } from "../providers/SessionProvider";
+import { Bell, BellOff } from "lucide-react";
 
 type UserRowProps = {
   user: SearchedUser | UserDehydrated;
@@ -15,6 +16,7 @@ type UserRowProps = {
   disabled?: boolean;
   timestamp?: string;
   messageCount?: number;
+  isNotificationsEnabled?: boolean;
   onMessageSent?: () => void;
   onShowNotification?: (userData: UserDehydrated) => void;
   onLongPress?: () => void;
@@ -27,6 +29,7 @@ export function UserRow({
   disabled = false,
   timestamp,
   messageCount,
+  isNotificationsEnabled,
   onMessageSent,
   onShowNotification,
   onLongPress,
@@ -139,7 +142,18 @@ export function UserRow({
                     {animationPhase === "complete" ? (
                       <span>yo sent!</span>
                     ) : (
-                      user?.username || `!${fid}`
+                      <>
+                        {user?.username || `!${fid}`}
+                        {isNotificationsEnabled !== undefined && (
+                          <span className="ml-1 text-white/50">
+                            {isNotificationsEnabled ? (
+                              <Bell className="w-4 h-4" />
+                            ) : (
+                              <BellOff className="w-4 h-4" />
+                            )}
+                          </span>
+                        )}
+                      </>
                     )}
                   </h3>
                 </div>
