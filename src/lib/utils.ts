@@ -73,3 +73,11 @@ export function getFidColor(fid: number): string {
 
   return `hsl(${Math.floor(hue)}, 70%, 55%)`;
 }
+
+export function formatNumber(num: number): string {
+  if (num < 1000) return num.toString();
+
+  const formatted = (num / 1000).toFixed(1);
+  // Remove trailing .0 if present
+  return `${formatted.endsWith(".0") ? formatted.slice(0, -2) : formatted}K`;
+}
