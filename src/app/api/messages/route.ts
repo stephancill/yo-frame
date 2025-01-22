@@ -23,9 +23,10 @@ export const GET = withAuth(async (req, user) => {
           "fromUser.fid as fromFid",
           "toUser.id as toUserId",
           "toUser.fid as toFid",
-          sql<boolean>`"to_user"."notification_token" IS NOT NULL`.as(
-            "notificationsEnabled"
-          ),
+          sql<boolean>`CASE 
+            WHEN "messages"."from_user_id" = ${user.id} THEN "to_user"."notification_token" IS NOT NULL
+            ELSE "from_user"."notification_token" IS NOT NULL
+          END`.as("notificationsEnabled"),
           sql<Date>`MAX("messages"."created_at") OVER (
             PARTITION BY 
               LEAST("from_user"."id", "to_user"."id"),
