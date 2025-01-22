@@ -359,34 +359,38 @@ export function App() {
           {!searchQuery &&
             data?.pages[0]?.messageCounts &&
             (!context || !showAddFrameButton ? (
-              <div className="p-4 flex space-x-12 text-3xl font-bold w-full">
-                <div className="text-center w-1/2">
-                  <div className="">
-                    {formatNumber(data.pages[0].messageCounts.outbound)}
+              <Link href="/leaderboard">
+                <div className="p-4 flex space-x-12 text-3xl font-bold w-full">
+                  <div className="text-center w-1/2">
+                    <div className="">
+                      {formatNumber(data.pages[0].messageCounts.outbound)}
+                    </div>
+                    <div className="text-sm">SENT</div>
                   </div>
-                  <div className="text-sm">SENT</div>
-                </div>
-                <div className="text-center w-1/2">
-                  <div className="">
-                    {formatNumber(data.pages[0].messageCounts.inbound)}
+                  <div className="text-center w-1/2">
+                    <div className="">
+                      {formatNumber(data.pages[0].messageCounts.inbound)}
+                    </div>
+                    <div className="text-sm">RECEIVED</div>
                   </div>
-                  <div className="text-sm">RECEIVED</div>
                 </div>
-              </div>
+              </Link>
             ) : (
-              <div className="flex items-center gap-2 text-lg font-bold bg-purple-500 py-4 px-2">
-                <div className="flex flex-col items-center">
-                  <span>
-                    {formatNumber(data.pages[0].messageCounts.outbound)}
-                  </span>
+              <Link href="/leaderboard">
+                <div className="flex items-center gap-2 text-lg font-bold bg-purple-500 py-4 px-2">
+                  <div className="flex flex-col items-center">
+                    <span>
+                      {formatNumber(data.pages[0].messageCounts.outbound)}
+                    </span>
+                  </div>
+                  <div className="h-4 w-[1px] bg-current mx-1 opacity-50" />
+                  <div className="flex flex-col items-center">
+                    <span>
+                      {formatNumber(data.pages[0].messageCounts.inbound)}
+                    </span>
+                  </div>
                 </div>
-                <div className="h-4 w-[1px] bg-current mx-1 opacity-50" />
-                <div className="flex flex-col items-center">
-                  <span>
-                    {formatNumber(data.pages[0].messageCounts.inbound)}
-                  </span>
-                </div>
-              </div>
+              </Link>
             ))}
           {context && showAddFrameButton ? (
             <Button
