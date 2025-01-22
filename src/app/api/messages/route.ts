@@ -180,7 +180,11 @@ export const POST = withAuth(async (req, user) => {
   const userUsername = userData?.username || `!${user.fid}`;
 
   let userNotified = false;
-  if (targetUser?.notificationUrl && targetUser?.notificationToken) {
+  if (
+    targetUser?.notificationUrl &&
+    targetUser?.notificationToken &&
+    targetUser?.notificationType === "all"
+  ) {
     await notifyUsers({
       users: [
         {

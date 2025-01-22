@@ -19,6 +19,7 @@ export const GET = withAuth(async (req, luciaUser) => {
     fid: dbUser.fid,
     id: dbUser.id,
     notificationsEnabled: dbUser.notificationUrl !== null,
+    notificationType: dbUser.notificationType,
   };
 
   return Response.json(user);

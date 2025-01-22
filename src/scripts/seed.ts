@@ -22,38 +22,59 @@ async function main() {
     process.exit(1);
   }
 
+  const messagesOnly = process.argv.includes("--messages");
+
   console.log(`Database URL: ${databaseUrl}`);
   const shouldProceed = await confirm(
-    "Are you sure you want to proceed with seeding? This will clear existing data. (y/N) "
+    `Are you sure you want to proceed with ${
+      messagesOnly ? "creating messages" : "seeding"
+    }? ${!messagesOnly ? "This will clear existing data. " : ""}(y/N) `
   );
 
   if (!shouldProceed) {
-    console.log("Seeding cancelled");
+    console.log("Operation cancelled");
     process.exit(0);
   }
 
-  // Clear existing data
-  await db.deleteFrom("messages").execute();
-  await db.deleteFrom("users").execute();
+  if (!messagesOnly) {
+    // Clear existing data
+    await db.deleteFrom("messages").execute();
+    await db.deleteFrom("users").execute();
 
-  const randomFids = Array.from({ length: 100 }, () =>
-    Math.floor(Math.random() * 20000)
-  );
+    const randomFids = Array.from({ length: 100 }, () =>
+      Math.floor(Math.random() * 20000)
+    );
 
-  const fids = Array.from(new Set([2, 3, 1214, 1689, 20054, ...randomFids]));
+    const fids = Array.from(new Set([2, 3, 1214, 1689, 20054, ...randomFids]));
 
-  // Create users
-  const users = await db
-    .insertInto("users")
-    .values(
-      fids.map((fid) => ({
-        fid,
-        notificationToken: fid % 3 !== 0 ? "test" : null,
-        notificationUrl: fid % 3 !== 0 ? "http://example.com" : null,
-      }))
-    )
-    .returningAll()
-    .execute();
+    // Create users
+    await db
+      .insertInto("users")
+      .values(
+        fids.map((fid) => ({
+          fid,
+          notificationToken: fid % 3 !== 0 ? "test" : null,
+          notificationUrl: fid % 3 !== 0 ? "http://example.com" : null,
+        }))
+      )
+      .returningAll()
+      .execute();
+  }
+
+  // Fetch existing users
+  const users = await db.selectFrom("users").selectAll().execute();
+
+  if (users.length < 2) {
+    console.error(
+      "Error: Need at least 2 users in the database to create messages"
+    );
+    process.exit(1);
+  }
+
+  // Clear existing messages if --messages flag is used
+  if (messagesOnly) {
+    await db.deleteFrom("messages").execute();
+  }
 
   // Generate random timestamps over the past 3 days
   const now = new Date();

@@ -2,8 +2,16 @@
 
 import sdk from "@farcaster/frame-sdk";
 import { SearchedUser, UserDehydrated } from "@neynar/nodejs-sdk/build/api";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, MessageCircleOff, RefreshCcw, Share, X } from "lucide-react";
+import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
+import {
+  Loader2,
+  MessageCircleOff,
+  Search,
+  Share,
+  X,
+  Bell,
+} from "lucide-react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
@@ -26,6 +34,7 @@ import {
 } from "../components/ui/sheet";
 import { UserRow } from "../components/UserRow";
 import { useWaitForNotifications } from "../hooks/use-wait-for-notifications";
+import { useSendMessageMutation } from "../lib/messages";
 import {
   createWarpcastComposeUrl,
   createWarpcastDcUrl,
@@ -34,8 +43,15 @@ import {
   getRelativeTime,
 } from "../lib/utils";
 import { useSession } from "../providers/SessionProvider";
-import { useSendMessageMutation } from "../lib/messages";
-import Link from "next/link";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import Image from "next/image";
+import { NotificationPreview } from "./NotificationPreview";
 
 type Message = {
   id: string;
@@ -137,6 +153,34 @@ export function App() {
     enabled: !!sheetUserId && !!user,
   });
 
+  const [showNotificationSettingsDialog, setShowNotificationSettingsDialog] =
+    useState(false);
+
+  const [previewNotificationType, setPreviewNotificationType] = useState<
+    "all" | "hourly"
+  >(user?.notificationType || "all");
+
+  const updateNotificationTypeMutation = useMutation({
+    mutationFn: async (type: "all" | "hourly") => {
+      const response = await authFetch("/api/user/notifications", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          notificationType: type,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update notification type");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchUser();
+    },
+  });
+
   useEffect(() => {
     const userId = searchParams.get("user");
     setSheetUserId(userId);
@@ -174,12 +218,16 @@ export function App() {
   return (
     <div className="w-full">
       <div className="relative">
+        <Search
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
+          size={24}
+        />
         <input
           type="text"
           placeholder="Search..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="text-3xl font-bold w-full px-4 py-6 focus:outline-none placeholder:text-gray-300 text-purple-500 rounded-none"
+          className="text-3xl font-bold w-full px-12 py-6 focus:outline-none placeholder:text-gray-300 text-purple-500 rounded-none"
         />
         {searchQuery && (
           <button
@@ -358,17 +406,30 @@ export function App() {
               ADD FRAME FOR ALERTS
             </Button>
           ) : (
-            <Button
-              size={"lg"}
-              variant="ghost"
-              className="flex-1 text-lg p-4"
-              onClick={() => setShowShareDialog(true)}
-            >
-              <Share
-                className="h-12 w-12"
-                style={{ width: "36px", height: "36px" }}
-              />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size={"lg"}
+                variant="ghost"
+                className="text-lg p-4"
+                onClick={() => setShowNotificationSettingsDialog(true)}
+              >
+                <Bell
+                  className="h-12 w-12"
+                  style={{ width: "36px", height: "36px" }}
+                />
+              </Button>
+              <Button
+                size={"lg"}
+                variant="ghost"
+                className="text-lg p-4"
+                onClick={() => setShowShareDialog(true)}
+              >
+                <Share
+                  className="h-12 w-12"
+                  style={{ width: "36px", height: "36px" }}
+                />
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -486,6 +547,91 @@ export function App() {
             >
               Draft Cast
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={showNotificationSettingsDialog}
+        onOpenChange={setShowNotificationSettingsDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-purple-500">
+              Notification Settings
+            </DialogTitle>
+            <DialogDescription>
+              Customize how and when you receive yo notifications
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 text-black">
+            {
+              <>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">
+                    Notification Frequency
+                  </label>
+                  <Select
+                    value={previewNotificationType}
+                    onValueChange={(value) =>
+                      setPreviewNotificationType(value as "all" | "hourly")
+                    }
+                    defaultValue={user?.notificationType}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All messages</SelectItem>
+                      <SelectItem value="hourly">Hourly summary</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="mt-4">
+                    <p className="text-sm font-medium mb-2">Preview</p>
+                    <div className="border rounded-lg p-4 space-y-4">
+                      {previewNotificationType === "hourly" ? (
+                        <NotificationPreview
+                          title="yo"
+                          subtitle="from user1 and 5 others"
+                          timestamp="1m"
+                        />
+                      ) : (
+                        <>
+                          <NotificationPreview
+                            title="yo"
+                            subtitle="from user1"
+                            timestamp="1m"
+                          />
+                          <NotificationPreview
+                            title="yo"
+                            subtitle="from user2"
+                            timestamp="2m"
+                          />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  className="w-full mt-4"
+                  onClick={() =>
+                    updateNotificationTypeMutation.mutate(
+                      previewNotificationType
+                    )
+                  }
+                  disabled={
+                    updateNotificationTypeMutation.isPending ||
+                    previewNotificationType === user?.notificationType
+                  }
+                >
+                  {updateNotificationTypeMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </>
+            }
           </div>
         </DialogContent>
       </Dialog>
