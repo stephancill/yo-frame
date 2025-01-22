@@ -146,9 +146,7 @@ export function UserRow({
                         {user?.username || `!${fid}`}
                         {isNotificationsEnabled !== undefined && (
                           <span className="ml-1 text-white/50">
-                            {isNotificationsEnabled ? (
-                              <Bell className="w-4 h-4" />
-                            ) : (
+                            {!isNotificationsEnabled && (
                               <BellOff className="w-4 h-4" />
                             )}
                           </span>
