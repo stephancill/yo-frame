@@ -151,10 +151,11 @@ export function App() {
       if (!res.ok) throw new Error("Failed to fetch user");
       return res.json() as Promise<{
         userData: UserDehydrated;
-        messageCounts?: {
+        messageCounts: {
           inbound: number;
           outbound: number;
         };
+        rank: number;
       }>;
     },
     enabled: !!sheetUserId && !!user,
@@ -683,11 +684,17 @@ export function App() {
                   </Avatar>
                   <div>
                     <SheetTitle className="text-xl">
-                      {sheetUserQuery.data.userData.username}
+                      <div className="flex items-center justify-center gap-2">
+                        <span>{sheetUserQuery.data.userData.username}</span>
+                        {sheetUserQuery.data.rank && (
+                          <Link href="/leaderboard">
+                            <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 hover:bg-purple-200 transition-colors">
+                              #{sheetUserQuery.data.rank}
+                            </span>
+                          </Link>
+                        )}
+                      </div>
                     </SheetTitle>
-                    <SheetDescription>
-                      @{sheetUserQuery.data.userData.username}
-                    </SheetDescription>
                   </div>
                   {sheetUserQuery.data.messageCounts && (
                     <div className="flex space-x-12 text-xl font-bold">

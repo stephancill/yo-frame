@@ -18,6 +18,14 @@ export const GET = withAuth<{ params: Promise<{ userIdOrFid: string }> }>(
         sql<number>`COUNT(CASE WHEN messages.to_user_id = users.id THEN 1 END)`.as(
           "inbound"
         ),
+        sql<number>`(
+          SELECT COUNT(*) + 1 FROM users AS u2 
+          WHERE (
+            SELECT COUNT(*) FROM messages WHERE from_user_id = u2.id OR to_user_id = u2.id
+          ) > (
+            SELECT COUNT(*) FROM messages WHERE from_user_id = users.id OR to_user_id = users.id
+          )
+        )`.as("rank"),
       ])
       .leftJoin("messages", (join) =>
         join.on((eb) =>
@@ -49,6 +57,7 @@ export const GET = withAuth<{ params: Promise<{ userIdOrFid: string }> }>(
         inbound: Number(dbUser.inbound || 0),
         outbound: Number(dbUser.outbound || 0),
       },
+      rank: Number(dbUser.rank || 0),
     });
   }
 );
