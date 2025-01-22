@@ -15,42 +15,26 @@ async function sendBatchNotifications() {
     .execute();
 
   for (const user of usersToNotify) {
-    // Get the latest message for each conversation in the last hour
+    //Only return messages received by the user after the user's last sent message within the last hour
     const messages = await db
-      .selectFrom(
-        db
+      .selectFrom("messages")
+      .innerJoin("users as fromUser", "messages.fromUserId", "fromUser.id")
+      .select([
+        "messages.id",
+        "fromUser.fid as fromFid",
+        "messages.fromUserId",
+        "messages.toUserId",
+        "messages.createdAt",
+      ])
+      .where("messages.toUserId", "=", user.id)
+      .where("messages.createdAt", ">", sql<Date>`NOW() - INTERVAL '1 hour'`)
+      .where("messages.createdAt", ">", (eb) =>
+        eb
           .selectFrom("messages")
-          .innerJoin("users as fromUser", "messages.fromUserId", "fromUser.id")
-          .select([
-            "messages.id",
-            "fromUser.fid as fromFid",
-            "messages.fromUserId",
-            "messages.toUserId",
-            "messages.createdAt",
-            sql<Date>`MAX("messages"."created_at") OVER (
-              PARTITION BY 
-                LEAST("from_user_id", "to_user_id"),
-                GREATEST("from_user_id", "to_user_id")
-            )`.as("maxCreatedAt"),
-          ])
-          .where((eb) =>
-            eb.or([
-              eb("messages.fromUserId", "=", user.id),
-              eb("messages.toUserId", "=", user.id),
-            ])
-          )
-          .where(
-            "messages.createdAt",
-            ">",
-            sql<Date>`NOW() - INTERVAL '1 hour'`
-          )
-          .as("subquery")
+          .select(sql<Date>`MAX(created_at)`.as("lastSentAt"))
+          .where("messages.fromUserId", "=", user.id)
       )
-      .selectAll()
-      .where((eb) => eb("createdAt", "=", eb.ref("maxCreatedAt")))
-      // Only get conversations where the last message was TO the user
-      .where("toUserId", "=", user.id)
-      .orderBy("createdAt", "desc")
+      .orderBy("messages.createdAt", "desc")
       .execute();
 
     if (messages.length === 0) continue;
