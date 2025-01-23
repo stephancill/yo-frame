@@ -1,23 +1,29 @@
 "use client";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import sdk from "@farcaster/frame-sdk";
 import { SearchedUser, UserDehydrated } from "@neynar/nodejs-sdk/build/api";
-import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import {
+  ChartNoAxesColumn,
+  Cog,
   Loader2,
   MessageCircleOff,
   Search,
   Share,
   X,
-  Bell,
-  UserRoundSearch,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { useDebounce } from "use-debounce";
-import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Button } from "../components/ui/button";
 import {
   Dialog,
@@ -26,28 +32,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
-import { UserSheet } from "./UserSheet";
 import { useWaitForNotifications } from "../hooks/use-wait-for-notifications";
-import { useSendMessageMutation } from "../lib/messages";
 import {
   createWarpcastComposeUrl,
   createWarpcastDcUrl,
+  formatNumber,
   getBaseUrl,
   getFidColor,
   getRelativeTime,
-  formatNumber,
 } from "../lib/utils";
 import { useSession } from "../providers/SessionProvider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import Image from "next/image";
 import { NotificationPreview } from "./NotificationPreview";
 import { UserRow } from "./UserRow";
+import { UserSheet } from "./UserSheet";
 
 type Message = {
   id: string;
@@ -85,12 +82,12 @@ export function App() {
 
   const [showAddFrameButton, setShowAddFrameButton] = useState(false);
 
+  const [sentCountAdd, setSentCountAdd] = useState(0);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery] = useDebounce(searchQuery, 300);
 
   const { ref, inView } = useInView();
-
-  const sendMessageMutation = useSendMessageMutation();
 
   const {
     data,
@@ -136,8 +133,9 @@ export function App() {
     enabled: !!debouncedQuery,
   });
 
-  const [sheetUserId, setSheetUserId] = useState<string | null>(null);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
+  const [sheetUserId, setSheetUserId] = useState<string | null>(null);
   const [showNotificationSettingsDialog, setShowNotificationSettingsDialog] =
     useState(false);
 
@@ -183,13 +181,17 @@ export function App() {
     }
   }, [context]);
 
-  const [showShareDialog, setShowShareDialog] = useState(false);
-
   useEffect(() => {
     if (searchQuery.length === 0) {
       refetchMessages();
     }
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (user) {
+      setSentCountAdd(0);
+    }
+  }, [user]);
 
   if (isLoading || isSessionLoading)
     return (
@@ -202,25 +204,54 @@ export function App() {
 
   return (
     <div className="w-full">
-      <div className="relative">
-        <Search
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
-          size={24}
-        />
-        <input
-          type="text"
-          placeholder="Search..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="text-3xl font-bold w-full px-12 py-6 focus:outline-none placeholder:text-gray-300 text-purple-500 rounded-none"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
-            <X size={24} />
-          </button>
+      <div className="flex items-center">
+        <div className="relative h-16 flex-grow">
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
+            size={24}
+          />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="text-2xl font-medium w-full px-12 h-full focus:outline-none placeholder:text-gray-300 text-purple-500 rounded-none"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={24} />
+            </button>
+          )}
+        </div>
+        {searchQuery === "" && (
+          <div className="flex bg-gray-100 text-gray-500">
+            <Link href="/leaderboard" className="p-0">
+              <Button variant="ghost" className="h-16 px-4">
+                <ChartNoAxesColumn
+                  className="h-12 w-12"
+                  style={{ width: "24px", height: "24px" }}
+                />
+              </Button>
+            </Link>
+
+            <Button
+              className="h-16 px-4"
+              variant="ghost"
+              onClick={() => setShowShareDialog(true)}
+            >
+              <Share style={{ width: "24px", height: "24px" }} />
+            </Button>
+            <Button
+              className="h-16 px-4"
+              variant="ghost"
+              onClick={() => setShowNotificationSettingsDialog(true)}
+            >
+              <Cog style={{ width: "24px", height: "24px" }} />
+            </Button>
+          </div>
         )}
       </div>
 
@@ -248,6 +279,7 @@ export function App() {
                   if (context && showAddFrameButton) {
                     setShowSelfNotificationDialog(true);
                   }
+                  setSentCountAdd((prev) => prev + 1);
                 }}
                 onShowNotification={(userData) => {
                   setShowNotificationDialog(true);
@@ -300,6 +332,7 @@ export function App() {
                           if (context && showAddFrameButton) {
                             setShowSelfNotificationDialog(true);
                           }
+                          setSentCountAdd((prev) => prev + 1);
                         }}
                         onShowNotification={(userData) => {
                           setShowNotificationDialog(true);
@@ -335,37 +368,21 @@ export function App() {
           </div>
         </div>
       )}
-      <div className="fixed bottom-0 left-0 right-0 p-4 flex justify-center z-50">
+      <div className="fixed bottom-0 left-0 right-0 p-4 flex z-50">
         <div
           className={`max-w-[400px] w-full flex items-center gap-2 ${
             !context || !showAddFrameButton ? "justify-center" : ""
           }`}
         >
-          {!searchQuery &&
-            data?.pages[0]?.messageCounts &&
-            (!context || !showAddFrameButton ? (
-              <Link href="/leaderboard">
-                <div className="p-4 flex space-x-12 text-3xl font-bold w-full">
-                  <div className="text-center w-1/2">
-                    <div className="">
-                      {formatNumber(data.pages[0].messageCounts.outbound)}
-                    </div>
-                    <div className="text-sm">SENT</div>
-                  </div>
-                  <div className="text-center w-1/2">
-                    <div className="">
-                      {formatNumber(data.pages[0].messageCounts.inbound)}
-                    </div>
-                    <div className="text-sm">RECEIVED</div>
-                  </div>
-                </div>
-              </Link>
-            ) : (
+          {!searchQuery && data?.pages[0]?.messageCounts && (
+            <div className={"ml-auto"}>
               <Link href="/leaderboard">
                 <div className="flex items-center gap-2 text-lg font-bold bg-purple-500 py-4 px-2">
                   <div className="flex flex-col items-center">
                     <span>
-                      {formatNumber(data.pages[0].messageCounts.outbound)}
+                      {formatNumber(
+                        data.pages[0].messageCounts.outbound + sentCountAdd
+                      )}
                     </span>
                   </div>
                   <div className="h-4 w-[1px] bg-current mx-1 opacity-50" />
@@ -376,8 +393,9 @@ export function App() {
                   </div>
                 </div>
               </Link>
-            ))}
-          {context && showAddFrameButton ? (
+            </div>
+          )}
+          {context && showAddFrameButton && (
             <Button
               size={"lg"}
               className="text-lg p-4 flex-1"
@@ -403,31 +421,6 @@ export function App() {
               ) : null}
               ADD FRAME FOR ALERTS
             </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button
-                size={"lg"}
-                variant="ghost"
-                className="text-lg p-4"
-                onClick={() => setShowNotificationSettingsDialog(true)}
-              >
-                <Bell
-                  className="h-12 w-12"
-                  style={{ width: "36px", height: "36px" }}
-                />
-              </Button>
-              <Button
-                size={"lg"}
-                variant="ghost"
-                className="text-lg p-4"
-                onClick={() => setShowShareDialog(true)}
-              >
-                <Share
-                  className="h-12 w-12"
-                  style={{ width: "36px", height: "36px" }}
-                />
-              </Button>
-            </div>
           )}
         </div>
       </div>
