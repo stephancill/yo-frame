@@ -1,4 +1,4 @@
-import { UserDehydrated } from "@neynar/nodejs-sdk/build/api";
+import { User as NeynarUser } from "@neynar/nodejs-sdk/build/api";
 import { useMutation } from "@tanstack/react-query";
 import { useSession } from "../providers/SessionProvider";
 
@@ -11,7 +11,7 @@ type PostMessageResponse = {
     createdAt: Date;
   };
   userNotified: boolean;
-  targetUserData: UserDehydrated;
+  targetUserData: NeynarUser;
 };
 
 export function useSendMessageMutation() {

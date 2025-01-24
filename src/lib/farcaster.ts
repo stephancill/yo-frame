@@ -17,8 +17,9 @@ import {
   DuneClient,
   RunQueryArgs,
 } from "@duneanalytics/client-sdk";
-import { getUserDataKey } from "./keys";
+import { getUserDataByAddressKey, getUserDataKey } from "./keys";
 import { redisCache } from "./redis";
+import { getAddress } from "viem/utils";
 
 type CastTextSegment = string | number;
 
@@ -242,6 +243,76 @@ export async function getUserDatasCached(
   await multi.exec();
 
   return [...cachedUsers, ...res.users];
+}
+
+export async function getUsersByAddresses(addresses: `0x${string}`[]) {
+  if (addresses.length === 0) {
+    return {};
+  }
+
+  const neynarClient = new NeynarAPIClient(
+    new Configuration({
+      apiKey: process.env.NEYNAR_API_KEY!,
+    })
+  );
+
+  // Get users from cache
+  const cachedUsersRes = await redisCache.mget(
+    addresses.map((address) => getUserDataByAddressKey(address))
+  );
+  const cachedUsers = cachedUsersRes.map((user) =>
+    user ? (JSON.parse(user) as NeynarUser) : null
+  );
+
+  // Create map of cached address -> user
+  const uncachedAddresses: `0x${string}`[] = [];
+
+  const result = cachedUsers.reduce<
+    Record<`0x${string}`, NeynarUser | undefined>
+  >((acc, user, index) => {
+    const address = addresses[index];
+    if (user) {
+      acc[address] = user;
+    } else {
+      uncachedAddresses.push(address);
+    }
+    return acc;
+  }, {});
+
+  if (uncachedAddresses.length === 0) {
+    return result;
+  }
+
+  // Fetch uncached users
+  const res = await neynarClient.fetchBulkUsersByEthOrSolAddress({
+    addresses: uncachedAddresses,
+  });
+
+  console.log("res", res);
+
+  // Cache fetched users and add to result
+  await redisCache.mset(
+    Object.entries(res).map(([addressRaw, users]) => {
+      const addressKey = getAddress(addressRaw) as `0x${string}`;
+      // Update result
+      result[addressKey] = users[0];
+      return [getUserDataByAddressKey(addressKey), JSON.stringify(users[0])];
+    })
+  );
+
+  // Set expiration for all newly cached addresses
+  let multi = redisCache.multi();
+  for (const [addressRaw] of Object.entries(res)) {
+    multi = multi.expire(
+      getUserDataByAddressKey(getAddress(addressRaw) as `0x${string}`),
+      60 * 60 * 24 * 3
+    ); // 3 days
+  }
+  await multi.exec();
+
+  console.log("result", result);
+
+  return result;
 }
 
 export async function getMutuals(fid: number) {

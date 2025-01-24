@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import sdk from "@farcaster/frame-sdk";
-import { SearchedUser, UserDehydrated } from "@neynar/nodejs-sdk/build/api";
+import { SearchedUser, User as NeynarUser } from "@neynar/nodejs-sdk/build/api";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import {
   ChartNoAxesColumn,
@@ -17,11 +17,12 @@ import {
   MessageCircleOff,
   Search,
   Share,
+  Star,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { useDebounce } from "use-debounce";
 import { Button } from "../components/ui/button";
@@ -45,6 +46,20 @@ import { useSession } from "../providers/SessionProvider";
 import { NotificationPreview } from "./NotificationPreview";
 import { UserRow } from "./UserRow";
 import { UserSheet } from "./UserSheet";
+import {
+  useAccount,
+  useReadContract,
+  useReadContracts,
+  useSendTransaction,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
+import { YO_TOKEN_ADDRESS } from "../lib/constants";
+import { erc20Abi } from "viem";
+import { parseAbi, formatEther } from "viem/utils";
+import { yoTokenAbi } from "../abi/yoTokenAbi";
+import { base } from "viem/chains";
+import { twMerge } from "tailwind-merge";
 
 type Message = {
   id: string;
@@ -54,20 +69,73 @@ type Message = {
   toFid: number;
   disabled: boolean;
   messageCount: number;
+  onchainMessageCount: number;
   notificationsEnabled: boolean;
+  isOnchain: boolean;
 };
 
 type MessagesResponse = {
   messages: Message[];
-  users: Record<number, UserDehydrated>;
+  users: Record<number, NeynarUser>;
   nextCursor: string | null;
   messageCounts: {
+    inbound: number;
+    outbound: number;
+  };
+  onchainMessageCounts: {
     inbound: number;
     outbound: number;
   };
 };
 
 export function App() {
+  const account = useAccount();
+  const {
+    data: yoTokenResults,
+    isLoading: isBalanceLoading,
+    isError: isBalanceError,
+    refetch: refetchBalance,
+  } = useReadContracts({
+    contracts: [
+      {
+        address: YO_TOKEN_ADDRESS,
+        abi: yoTokenAbi,
+        functionName: "balanceOf",
+        args: account.address ? [account.address] : undefined,
+      },
+      {
+        address: YO_TOKEN_ADDRESS,
+        abi: yoTokenAbi,
+        functionName: "yoAmount",
+      },
+    ],
+  });
+
+  const yoToken = useMemo(() => {
+    if (!yoTokenResults) return null;
+
+    const balance = yoTokenResults[0].result;
+    const yoAmount = yoTokenResults[1].result;
+
+    return {
+      balance,
+      yoAmount,
+    };
+  }, [yoTokenResults]);
+
+  const {
+    data: txHash,
+    sendTransaction,
+    isPending,
+    isSuccess,
+    error: sendTransactionError,
+  } = useSendTransaction();
+
+  const { data: receipt, isLoading: isReceiptLoading } =
+    useWaitForTransactionReceipt({
+      hash: txHash,
+    });
+
   const {
     authFetch,
     user,
@@ -113,7 +181,7 @@ export function App() {
   });
 
   const [showNotificationDialog, setShowNotificationDialog] = useState(false);
-  const [dialogUser, setDialogUser] = useState<UserDehydrated | null>(null);
+  const [dialogUser, setDialogUser] = useState<NeynarUser | null>(null);
 
   const [showSelfNotificationDialog, setShowSelfNotificationDialog] =
     useState(false);
@@ -143,6 +211,12 @@ export function App() {
     "all" | "hourly"
   >(user?.notificationType || "all");
 
+  const [superYoMode, setSuperYoMode] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
+  const [superYodUsers, setSuperYodUsers] = useState<Set<number>>(new Set());
+
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
   const updateNotificationTypeMutation = useMutation({
     mutationFn: async (type: "all" | "hourly") => {
       const response = await authFetch("/api/user/notifications", {
@@ -161,6 +235,22 @@ export function App() {
     },
     onSuccess: () => {
       refetchUser();
+    },
+  });
+
+  const superYoMutation = useMutation({
+    mutationFn: async (targetFids: number[]) => {
+      const response = await authFetch("/api/messages/onchain", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ targetFids }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to prepare transaction");
+      }
+      return response.json();
     },
   });
 
@@ -193,6 +283,24 @@ export function App() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (receipt) {
+      setShowConfirmation(true);
+      refetchBalance();
+      setTimeout(() => {
+        setShowConfirmation(false);
+        setSuperYoMode(false);
+        setSuperYodUsers((prev) => {
+          // Add current selected users to super yod users
+          const next = new Set(prev);
+          selectedUsers.forEach((fid) => next.add(fid));
+          return next;
+        });
+        setSelectedUsers(new Set());
+      }, 1000);
+    }
+  }, [receipt]);
+
   if (isLoading || isSessionLoading)
     return (
       <div className="flex justify-center p-8">
@@ -204,6 +312,25 @@ export function App() {
 
   return (
     <div className="w-full">
+      {!searchQuery && superYoMode && (
+        <Button
+          className="w-full text-yellow-500 h-16 text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 border-4 border-yellow-400 shadow-lg hover:shadow-xl transition-all duration-300"
+          variant="secondary"
+          onClick={() => {
+            setSuperYoMode(false);
+            setSelectedUsers(new Set());
+          }}
+        >
+          SUPER YO ★
+          {yoToken?.balance
+            ? (
+                Math.floor(parseFloat(formatEther(yoToken?.balance)) * 10) / 10
+              ).toLocaleString()
+            : "0"}{" "}
+          $YO
+        </Button>
+      )}
+
       <div className="flex items-center">
         <div className="relative h-16 flex-grow">
           <Search
@@ -275,6 +402,7 @@ export function App() {
                 fid={user.fid}
                 backgroundColor={getFidColor(user.fid)}
                 disabled={false}
+                mode="message"
                 onMessageSent={() => {
                   if (context && showAddFrameButton) {
                     setShowSelfNotificationDialog(true);
@@ -317,16 +445,48 @@ export function App() {
                         : message.fromFid;
                     const otherUser = page.users[otherUserFid];
 
+                    const disabled =
+                      message.disabled ||
+                      (superYoMode &&
+                        !otherUser.verified_addresses.eth_addresses[0]);
+
+                    const isSuperYod =
+                      message.isOnchain || superYodUsers.has(otherUserFid);
+
+                    const animationPhaseOverride = isSuperYod
+                      ? "complete"
+                      : undefined;
+
                     return (
                       <UserRow
                         key={message.id}
                         user={otherUser}
                         fid={otherUserFid}
                         backgroundColor={getFidColor(otherUserFid)}
-                        disabled={message.disabled}
+                        disabled={disabled}
                         isNotificationsEnabled={message.notificationsEnabled}
                         timestamp={getRelativeTime(new Date(message.createdAt))}
                         messageCount={message.messageCount}
+                        onchainMessageCount={
+                          superYodUsers.has(otherUserFid)
+                            ? Number(message.onchainMessageCount) + 1
+                            : message.onchainMessageCount
+                        }
+                        selected={selectedUsers.has(otherUserFid)}
+                        mode={superYoMode ? "select" : "message"}
+                        animationPhase={animationPhaseOverride}
+                        isSuper={isSuperYod}
+                        onSelect={() => {
+                          setSelectedUsers((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(otherUserFid)) {
+                              next.delete(otherUserFid);
+                            } else {
+                              next.add(otherUserFid);
+                            }
+                            return next;
+                          });
+                        }}
                         onMessageSent={() => {
                           setSearchQuery("");
                           if (context && showAddFrameButton) {
@@ -369,58 +529,145 @@ export function App() {
         </div>
       )}
       <div className="fixed bottom-0 left-0 right-0 p-4 flex z-50">
-        <div
-          className={`max-w-[400px] w-full flex items-center gap-2 ${
-            !context || !showAddFrameButton ? "justify-center" : ""
-          }`}
-        >
+        <div className="max-w-[400px] w-full flex items-center gap-2">
           {!searchQuery && data?.pages[0]?.messageCounts && (
-            <div className={"ml-auto"}>
-              <Link href="/leaderboard">
-                <div className="flex items-center gap-2 text-lg font-bold bg-purple-500 py-4 px-2">
-                  <div className="flex flex-col items-center">
-                    <span>
-                      {formatNumber(
-                        data.pages[0].messageCounts.outbound + sentCountAdd
-                      )}
-                    </span>
+            <div className="ml-auto flex items-center gap-2">
+              {!superYoMode && (
+                <Link href="/leaderboard">
+                  <div className="flex items-center gap-2 text-lg font-bold bg-purple-500 py-4 px-2">
+                    <div className="flex flex-col items-center">
+                      <span>
+                        {formatNumber(
+                          data.pages[0].messageCounts.outbound + sentCountAdd
+                        )}
+                      </span>
+                    </div>
+                    <div className="h-4 w-[1px] bg-current mx-1 opacity-50" />
+                    <div className="flex flex-col items-center">
+                      <span>
+                        {formatNumber(data.pages[0].messageCounts.inbound)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="h-4 w-[1px] bg-current mx-1 opacity-50" />
-                  <div className="flex flex-col items-center">
-                    <span>
-                      {formatNumber(data.pages[0].messageCounts.inbound)}
-                    </span>
-                  </div>
-                </div>
-              </Link>
+                </Link>
+              )}
+              <Button
+                size="icon"
+                className={twMerge(
+                  `py-4 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 border-yellow-400`,
+                  !superYoMode ? "animate-pulse" : ""
+                )}
+                variant="secondary"
+                onClick={() => {
+                  setSuperYoMode(!superYoMode);
+                  setSelectedUsers(new Set());
+                }}
+              >
+                {superYoMode ? (
+                  <X className="h-6 w-6" />
+                ) : (
+                  <span className="text-yellow-400 text-2xl">★</span>
+                )}
+              </Button>
             </div>
           )}
-          {context && showAddFrameButton && (
+          {superYoMode ? (
             <Button
-              size={"lg"}
-              className="text-lg p-4 flex-1"
-              disabled={isWaitingForNotifications}
-              onClick={() => {
-                sdk.actions.addFrame().then((result) => {
-                  if (result.notificationDetails) {
-                    waitForNotifications(void 0, {
-                      onSuccess: () => {
-                        refetchUser();
-                        setShowAddFrameButton(false);
+              size="lg"
+              className="text-lg p-4 flex-1 uppercase"
+              disabled={
+                selectedUsers.size === 0 ||
+                !yoToken?.balance ||
+                !yoToken?.yoAmount ||
+                selectedUsers.size >
+                  Math.floor(
+                    Number(yoToken.balance) / Number(yoToken.yoAmount)
+                  ) ||
+                superYoMutation.isPending ||
+                isPending ||
+                isReceiptLoading ||
+                showConfirmation
+              }
+              onClick={async () => {
+                try {
+                  const result = await superYoMutation.mutateAsync(
+                    Array.from(selectedUsers)
+                  );
+                  sendTransaction(
+                    {
+                      to: YO_TOKEN_ADDRESS,
+                      data: result.calldata as `0x${string}`,
+                      chainId: base.id,
+                    },
+                    {
+                      onError(error, variables, context) {
+                        console.error("Failed to send Super Yo:", error);
                       },
-                      onError: () => {
-                        // TODO: show error
-                      },
-                    });
-                  }
-                });
+                    }
+                  );
+                } catch (error) {
+                  console.error("Failed to send Super Yo:", error);
+                }
               }}
             >
-              {isWaitingForNotifications ? (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              ) : null}
-              ADD FRAME FOR ALERTS
+              {superYoMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Preparing Transaction...
+                </>
+              ) : isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending Transaction...
+                </>
+              ) : isReceiptLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Confirming Transaction...
+                </>
+              ) : showConfirmation ? (
+                "Confirmed!"
+              ) : selectedUsers.size > 0 ? (
+                `SEND SUPER YO (${selectedUsers.size}${
+                  yoToken?.balance && yoToken?.yoAmount
+                    ? ` / ${Math.floor(
+                        Number(yoToken.balance) / Number(yoToken.yoAmount)
+                      )}`
+                    : ""
+                })`
+              ) : (
+                "Select users"
+              )}
             </Button>
+          ) : (
+            context &&
+            showAddFrameButton && (
+              <Button
+                size={"lg"}
+                className="text-lg p-4 flex-1"
+                disabled={isWaitingForNotifications}
+                onClick={() => {
+                  sdk.actions.addFrame().then((result) => {
+                    if (result.notificationDetails) {
+                      waitForNotifications(void 0, {
+                        onSuccess: () => {
+                          refetchUser();
+                          setShowAddFrameButton(false);
+                        },
+                        onError: () => {
+                          // TODO: show error
+                        },
+                      });
+                    }
+                  });
+                }}
+              >
+                {isWaitingForNotifications ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : null}
+                ADD FRAME FOR ALERTS
+              </Button>
+            )
           )}
         </div>
       </div>
