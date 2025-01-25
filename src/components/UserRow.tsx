@@ -146,9 +146,8 @@ export function UserRow({
                     : messageCount}
                   {onchainMessageCount !== undefined &&
                     Number(onchainMessageCount) > 0 && (
-                      <span className="inline-flex items-center">
-                        <span className="text-yellow-400">★</span>
-                        <span className="ml-0.5">{onchainMessageCount}</span>
+                      <span className="inline-flex items-center flex gap-1">
+                        <span>($YO {onchainMessageCount})</span>
                       </span>
                     )}
                 </span>

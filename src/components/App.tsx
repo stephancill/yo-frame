@@ -22,11 +22,15 @@ import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import {
   ChartNoAxesColumn,
   Cog,
+  Copy,
   Loader2,
   MessageCircleOff,
+  Plus,
   Search,
   Share,
   X,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -130,16 +134,27 @@ export function App() {
   }, [yoTokenResults]);
 
   const {
-    data: txHash,
-    sendTransaction,
-    isPending,
-    isSuccess,
-    error: sendTransactionError,
+    data: superYoTxHash,
+    sendTransaction: sendSuperYoTransaction,
+    isPending: isSuperYoTxPending,
   } = useSendTransaction();
 
-  const { data: receipt, isLoading: isReceiptLoading } =
+  const {
+    data: buyTxHash,
+    sendTransaction: sendBuyTransaction,
+    isPending: isBuyPending,
+    isSuccess: isBuySuccess,
+    error: buySendTransactionError,
+  } = useSendTransaction();
+
+  const { data: superYoReceipt, isLoading: isSuperYoReceiptLoading } =
     useWaitForTransactionReceipt({
-      hash: txHash,
+      hash: superYoTxHash,
+    });
+
+  const { data: buyReceipt, isLoading: isBuyReceiptLoading } =
+    useWaitForTransactionReceipt({
+      hash: buyTxHash,
     });
 
   const {
@@ -223,6 +238,8 @@ export function App() {
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  const [showCopyCheck, setShowCopyCheck] = useState(false);
+
   const updateNotificationTypeMutation = useMutation({
     mutationFn: async (type: "all" | "hourly") => {
       const response = await authFetch("/api/user/notifications", {
@@ -261,7 +278,7 @@ export function App() {
   });
 
   const [showBuyDrawer, setShowBuyDrawer] = useState(false);
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(5);
 
   const { data: basePrice, isLoading: isBasePriceLoading } = useQuery({
     queryKey: ["yoBasePrice"],
@@ -324,11 +341,18 @@ export function App() {
       return res.json();
     },
     onSuccess: (data) => {
-      sendTransaction({
-        to: data.transaction.to,
-        data: data.transaction.data,
-        value: data.transaction.value,
-      });
+      sendSuperYoTransaction(
+        {
+          to: data.transaction.to,
+          data: data.transaction.data,
+          value: data.transaction.value,
+        },
+        {
+          onError(error, variables, context) {
+            console.error("Failed to send transaction:", error);
+          },
+        }
+      );
     },
   });
 
@@ -362,7 +386,7 @@ export function App() {
   }, [user]);
 
   useEffect(() => {
-    if (receipt) {
+    if (superYoReceipt) {
       setShowConfirmation(true);
       refetchBalance();
       setTimeout(() => {
@@ -377,7 +401,13 @@ export function App() {
         setSelectedUsers(new Set());
       }, 1000);
     }
-  }, [receipt]);
+  }, [superYoReceipt]);
+
+  useEffect(() => {
+    if (buyReceipt) {
+      refetchBalance();
+    }
+  }, [buyReceipt]);
 
   if (isLoading || isSessionLoading)
     return (
@@ -391,16 +421,9 @@ export function App() {
   return (
     <div className="w-full">
       {!searchQuery && superYoMode && (
-        <div className="flex w-full">
-          <Button
-            className="flex-1 text-yellow-500 h-16 text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 border-4 border-yellow-400 shadow-lg hover:shadow-xl transition-all duration-300"
-            variant="secondary"
-            onClick={() => {
-              setSuperYoMode(false);
-              setSelectedUsers(new Set());
-            }}
-          >
-            SUPER YO ★
+        <div className="flex w-full sticky top-0 z-50 bg-black shadow-lg">
+          <div className="h-16 px-4 flex grow items-center gap-2 text-xl font-bold bg-gray-800 text-center">
+            SUPER YO •{" "}
             {yoToken?.balance
               ? (
                   Math.floor(parseFloat(formatEther(yoToken?.balance)) * 10) /
@@ -408,66 +431,73 @@ export function App() {
                 ).toLocaleString()
               : "0"}{" "}
             $YO
-          </Button>
+          </div>
           <Button
-            className="ml-2 h-16 px-6 text-xl font-bold bg-yellow-400 hover:bg-yellow-500 text-black"
+            className="text-xl font-bold uppercase flex gap-1 items-center hover:bg-gray-700"
+            size="lg"
             onClick={() => setShowBuyDrawer(true)}
           >
-            BUY
+            <Plus
+              className="h-6 w-6"
+              style={{ width: "24px", height: "24px" }}
+            />
+            <span className="text-lg">BUY</span>
           </Button>
         </div>
       )}
 
-      <div className="flex items-center">
-        <div className="relative h-16 flex-grow">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
-            size={24}
-          />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="text-2xl font-medium w-full px-12 h-full focus:outline-none placeholder:text-gray-300 text-purple-500 rounded-none"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={24} />
-            </button>
+      {!superYoMode && (
+        <div className="flex items-center">
+          <div className="relative h-16 flex-grow">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
+              size={24}
+            />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="text-2xl font-medium w-full px-12 h-full focus:outline-none placeholder:text-gray-300 text-purple-500 rounded-none"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            )}
+          </div>
+          {searchQuery === "" && (
+            <div className="flex bg-gray-100 text-gray-500">
+              <Link href="/leaderboard" className="p-0">
+                <Button variant="ghost" className="h-16 px-4">
+                  <ChartNoAxesColumn
+                    className="h-12 w-12"
+                    style={{ width: "24px", height: "24px" }}
+                  />
+                </Button>
+              </Link>
+
+              <Button
+                className="h-16 px-4"
+                variant="ghost"
+                onClick={() => setShowShareDialog(true)}
+              >
+                <Share style={{ width: "24px", height: "24px" }} />
+              </Button>
+              <Button
+                className="h-16 px-4"
+                variant="ghost"
+                onClick={() => setShowNotificationSettingsDialog(true)}
+              >
+                <Cog style={{ width: "24px", height: "24px" }} />
+              </Button>
+            </div>
           )}
         </div>
-        {searchQuery === "" && (
-          <div className="flex bg-gray-100 text-gray-500">
-            <Link href="/leaderboard" className="p-0">
-              <Button variant="ghost" className="h-16 px-4">
-                <ChartNoAxesColumn
-                  className="h-12 w-12"
-                  style={{ width: "24px", height: "24px" }}
-                />
-              </Button>
-            </Link>
-
-            <Button
-              className="h-16 px-4"
-              variant="ghost"
-              onClick={() => setShowShareDialog(true)}
-            >
-              <Share style={{ width: "24px", height: "24px" }} />
-            </Button>
-            <Button
-              className="h-16 px-4"
-              variant="ghost"
-              onClick={() => setShowNotificationSettingsDialog(true)}
-            >
-              <Cog style={{ width: "24px", height: "24px" }} />
-            </Button>
-          </div>
-        )}
-      </div>
+      )}
 
       {isFetching && (
         <div className="flex justify-center p-8">
@@ -617,11 +647,23 @@ export function App() {
       )}
       <div className="fixed bottom-0 left-0 right-0 p-4 flex z-50">
         <div className="max-w-[400px] w-full flex items-center gap-2">
-          {!searchQuery && data?.pages[0]?.messageCounts && (
+          {!searchQuery && data?.pages[0]?.messageCounts && !superYoMode && (
             <div className="ml-auto flex items-center gap-2">
-              {!superYoMode && (
+              {account.address && (
+                <Button
+                  className="px-4 bg-black font-bold shadow-lg"
+                  size="lg"
+                  onClick={() => {
+                    setSuperYoMode(!superYoMode);
+                    setSelectedUsers(new Set());
+                  }}
+                >
+                  <span className="text-xl">$YO</span>
+                </Button>
+              )}
+              {!showAddFrameButton && (
                 <Link href="/leaderboard">
-                  <div className="flex items-center gap-2 text-lg font-bold bg-purple-500 py-4 px-2">
+                  <div className="flex h-16 items-center gap-2 text-lg font-bold bg-purple-500 py-4 px-2">
                     <div className="flex flex-col items-center">
                       <span>
                         {formatNumber(
@@ -638,94 +680,91 @@ export function App() {
                   </div>
                 </Link>
               )}
-              <Button
-                size="icon"
-                className={twMerge(
-                  `py-4 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 border-yellow-400`,
-                  !superYoMode ? "animate-pulse" : ""
-                )}
-                variant="secondary"
-                onClick={() => {
-                  setSuperYoMode(!superYoMode);
-                  setSelectedUsers(new Set());
-                }}
-              >
-                {superYoMode ? (
-                  <X className="h-6 w-6" />
-                ) : (
-                  <span className="text-yellow-400 text-2xl">★</span>
-                )}
-              </Button>
             </div>
           )}
           {superYoMode ? (
-            <Button
-              size="lg"
-              className="text-lg p-4 flex-1 uppercase"
-              disabled={
-                selectedUsers.size === 0 ||
-                !yoToken?.balance ||
-                !yoToken?.yoAmount ||
-                selectedUsers.size >
-                  Math.floor(
-                    Number(yoToken.balance) / Number(yoToken.yoAmount)
-                  ) ||
-                superYoMutation.isPending ||
-                isPending ||
-                isReceiptLoading ||
-                showConfirmation
-              }
-              onClick={async () => {
-                try {
-                  const result = await superYoMutation.mutateAsync(
-                    Array.from(selectedUsers)
-                  );
-                  sendTransaction(
-                    {
-                      to: YO_TOKEN_ADDRESS,
-                      data: result.calldata as `0x${string}`,
-                      chainId: base.id,
-                    },
-                    {
-                      onError(error, variables, context) {
-                        console.error("Failed to send Super Yo:", error);
-                      },
-                    }
-                  );
-                } catch (error) {
-                  console.error("Failed to send Super Yo:", error);
+            <div className="flex gap-2 w-full">
+              <Button
+                size="lg"
+                className="flex-shrink-0"
+                onClick={() => {
+                  setSuperYoMode(false);
+                  setSelectedUsers(new Set());
+                }}
+              >
+                <X
+                  className="h-12 w-12"
+                  style={{ width: "24px", height: "24px" }}
+                />
+              </Button>
+              <Button
+                size="lg"
+                className="text-lg p-4 flex-1 uppercase grow-1 w-full font-bold"
+                disabled={
+                  selectedUsers.size === 0 ||
+                  !yoToken?.balance ||
+                  !yoToken?.yoAmount ||
+                  selectedUsers.size >
+                    Math.floor(
+                      Number(yoToken.balance) / Number(yoToken.yoAmount)
+                    ) ||
+                  superYoMutation.isPending ||
+                  isSuperYoTxPending ||
+                  isSuperYoReceiptLoading ||
+                  showConfirmation
                 }
-              }}
-            >
-              {superYoMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Preparing Transaction...
-                </>
-              ) : isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending Transaction...
-                </>
-              ) : isReceiptLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Confirming Transaction...
-                </>
-              ) : showConfirmation ? (
-                "Confirmed!"
-              ) : selectedUsers.size > 0 ? (
-                `SEND SUPER YO (${selectedUsers.size}${
-                  yoToken?.balance && yoToken?.yoAmount
-                    ? ` / ${Math.floor(
-                        Number(yoToken.balance) / Number(yoToken.yoAmount)
-                      )}`
-                    : ""
-                })`
-              ) : (
-                "Select users"
-              )}
-            </Button>
+                onClick={async () => {
+                  try {
+                    const result = await superYoMutation.mutateAsync(
+                      Array.from(selectedUsers)
+                    );
+                    sendSuperYoTransaction(
+                      {
+                        to: YO_TOKEN_ADDRESS,
+                        data: result.calldata as `0x${string}`,
+                        chainId: base.id,
+                      },
+                      {
+                        onError(error, variables, context) {
+                          console.error("Failed to send Super Yo:", error);
+                        },
+                      }
+                    );
+                  } catch (error) {
+                    console.error("Failed to send Super Yo:", error);
+                  }
+                }}
+              >
+                {superYoMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Preparing Transaction...
+                  </>
+                ) : isSuperYoTxPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending Transaction...
+                  </>
+                ) : isSuperYoReceiptLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Confirming Transaction...
+                  </>
+                ) : showConfirmation ? (
+                  "Confirmed!"
+                ) : selectedUsers.size > 0 ? (
+                  `SEND SUPER YO (${selectedUsers.size}${
+                    yoToken?.balance && yoToken?.yoAmount
+                      ? ` / ${Math.floor(
+                          Number(yoToken.balance) / Number(yoToken.yoAmount)
+                        )}`
+                      : ""
+                  })`
+                ) : (
+                  "Select users"
+                )}
+              </Button>
+            </div>
           ) : (
             context &&
             showAddFrameButton && (
@@ -850,16 +889,12 @@ export function App() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-4 justify-end">
-            <Button
-              variant="outline"
-              className="text-black"
-              onClick={() => {
-                const url = `${getBaseUrl()}?user=${user?.fid}`;
-                navigator.clipboard.writeText(url);
-                setShowShareDialog(false);
-              }}
-            >
-              Copy
+            <Button variant="outline" className="text-black">
+              {showCopyCheck ? (
+                <Check className="h-3 w-3" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )}
             </Button>
             <Button
               onClick={() => {
@@ -965,7 +1000,24 @@ export function App() {
         <DrawerContent className="text-black">
           <DrawerHeader>
             <DrawerTitle>Buy $YO Tokens</DrawerTitle>
-            <DrawerDescription>Select amount to purchase</DrawerDescription>
+            <div
+              className="text-sm text-gray-500 flex items-center justify-center gap-1 w-full"
+              onClick={() => {
+                navigator.clipboard.writeText(YO_TOKEN_ADDRESS);
+                setShowCopyCheck(true);
+                setTimeout(() => setShowCopyCheck(false), 2000);
+              }}
+            >
+              {YO_TOKEN_ADDRESS}
+              <Button variant="ghost" size="sm" className="h-6 px-2">
+                {showCopyCheck ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
+              </Button>
+            </div>
+            {/* <DrawerDescription>Select amount to purchase</DrawerDescription> */}
           </DrawerHeader>
           <div className="p-4 space-y-4">
             {[5, 10, 100, 1000].map((amount) => (
@@ -994,29 +1046,30 @@ export function App() {
             ))}
           </div>
           <div className="text-sm text-gray-500 text-center">
-            Outputs may vary due to slippage
+            Actual outputs may vary due to slippage
           </div>
           <DrawerFooter className="flex flex-col gap-2">
             <Button
-              disabled={!selectedAmount || buyMutation.isPending || isPending}
+              disabled={
+                !selectedAmount || buyMutation.isPending || isBuyPending
+              }
               onClick={() => buyMutation.mutate()}
               className={`w-full h-12 ${
-                !selectedAmount || buyMutation.isPending || isPending
+                !selectedAmount || buyMutation.isPending || isBuyPending
                   ? ""
                   : "bg-purple-500 hover:bg-purple-600"
               }`}
             >
-              {buyMutation.isPending || isPending ? (
+              {buyMutation.isPending || isBuyPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isPending ? "Confirming..." : "Preparing..."}
+                  {isBuyPending ? "Confirming..." : "Preparing..."}
                 </>
               ) : (
                 `Buy ${selectedAmount} $YO`
               )}
             </Button>
 
-            {/* New button to open Uniswap */}
             <Button
               variant="outline"
               onClick={() => {
@@ -1025,7 +1078,7 @@ export function App() {
                 );
               }}
             >
-              Buy on Uniswap
+              Buy on Uniswap <ExternalLink className="h-4 w-4" />
             </Button>
 
             <DrawerClose asChild>
