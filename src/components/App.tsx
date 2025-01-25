@@ -1,6 +1,15 @@
 "use client";
 
 import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -8,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import sdk from "@farcaster/frame-sdk";
-import { SearchedUser, User as NeynarUser } from "@neynar/nodejs-sdk/build/api";
+import { User as NeynarUser, SearchedUser } from "@neynar/nodejs-sdk/build/api";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import {
   ChartNoAxesColumn,
@@ -17,14 +26,23 @@ import {
   MessageCircleOff,
   Search,
   Share,
-  Star,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useInView } from "react-intersection-observer";
+import { twMerge } from "tailwind-merge";
 import { useDebounce } from "use-debounce";
+import { base } from "viem/chains";
+import { formatEther, parseEther } from "viem/utils";
+import {
+  useAccount,
+  useReadContracts,
+  useSendTransaction,
+  useWaitForTransactionReceipt,
+} from "wagmi";
+import { yoTokenAbi } from "../abi/yoTokenAbi";
 import { Button } from "../components/ui/button";
 import {
   Dialog,
@@ -34,11 +52,13 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 import { useWaitForNotifications } from "../hooks/use-wait-for-notifications";
+import { YO_TOKEN_ADDRESS } from "../lib/constants";
 import {
   createWarpcastComposeUrl,
   createWarpcastDcUrl,
   formatNumber,
   getBaseUrl,
+  getEthUsdPrice,
   getFidColor,
   getRelativeTime,
 } from "../lib/utils";
@@ -46,20 +66,6 @@ import { useSession } from "../providers/SessionProvider";
 import { NotificationPreview } from "./NotificationPreview";
 import { UserRow } from "./UserRow";
 import { UserSheet } from "./UserSheet";
-import {
-  useAccount,
-  useReadContract,
-  useReadContracts,
-  useSendTransaction,
-  useWaitForTransactionReceipt,
-  useWriteContract,
-} from "wagmi";
-import { YO_TOKEN_ADDRESS } from "../lib/constants";
-import { erc20Abi } from "viem";
-import { parseAbi, formatEther } from "viem/utils";
-import { yoTokenAbi } from "../abi/yoTokenAbi";
-import { base } from "viem/chains";
-import { twMerge } from "tailwind-merge";
 
 type Message = {
   id: string;
@@ -254,6 +260,78 @@ export function App() {
     },
   });
 
+  const [showBuyDrawer, setShowBuyDrawer] = useState(false);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+
+  const { data: basePrice, isLoading: isBasePriceLoading } = useQuery({
+    queryKey: ["yoBasePrice"],
+    queryFn: async () => {
+      const sellAmount = parseFloat(parseEther("0.0001").toString());
+      const res = await authFetch(
+        `/api/quote?amount=${sellAmount}&taker=${account.address}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch price");
+      const priceData = await res.json();
+      // Get ETH/USD price
+      const ethUsdPrice = await getEthUsdPrice();
+
+      const yoPriceUsd =
+        1 / (Number(priceData.buyAmount) / sellAmount / ethUsdPrice); // TODO: Change to 1e18
+
+      console.log("yoprice", {
+        ...priceData,
+        ethUsdPrice,
+        yoPriceUsd,
+      });
+
+      return {
+        ...priceData,
+        ethUsdPrice,
+        yoPriceUsd,
+      };
+    },
+    enabled: showBuyDrawer,
+  });
+
+  const priceQuote = useMemo(() => {
+    if (!basePrice || !selectedAmount) return null;
+
+    // Amount of eth to sell to get the selected amount of $YO
+    const sellAmount = parseEther(
+      (
+        (basePrice.yoPriceUsd * selectedAmount) /
+        basePrice.ethUsdPrice
+      ).toString()
+    );
+
+    return {
+      ...basePrice,
+      sellAmount,
+    };
+  }, [basePrice, selectedAmount]);
+
+  const buyMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedAmount || !priceQuote) throw new Error("Invalid state");
+      const res = await authFetch("/api/quote", {
+        method: "POST",
+        body: JSON.stringify({
+          amount: priceQuote.sellAmount.toString(),
+          takerAddress: account.address,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to get transaction");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      sendTransaction({
+        to: data.transaction.to,
+        data: data.transaction.data,
+        value: data.transaction.value,
+      });
+    },
+  });
+
   useEffect(() => {
     const userId = searchParams.get("user");
     setSheetUserId(userId);
@@ -313,22 +391,31 @@ export function App() {
   return (
     <div className="w-full">
       {!searchQuery && superYoMode && (
-        <Button
-          className="w-full text-yellow-500 h-16 text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 border-4 border-yellow-400 shadow-lg hover:shadow-xl transition-all duration-300"
-          variant="secondary"
-          onClick={() => {
-            setSuperYoMode(false);
-            setSelectedUsers(new Set());
-          }}
-        >
-          SUPER YO ★
-          {yoToken?.balance
-            ? (
-                Math.floor(parseFloat(formatEther(yoToken?.balance)) * 10) / 10
-              ).toLocaleString()
-            : "0"}{" "}
-          $YO
-        </Button>
+        <div className="flex w-full">
+          <Button
+            className="flex-1 text-yellow-500 h-16 text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 border-4 border-yellow-400 shadow-lg hover:shadow-xl transition-all duration-300"
+            variant="secondary"
+            onClick={() => {
+              setSuperYoMode(false);
+              setSelectedUsers(new Set());
+            }}
+          >
+            SUPER YO ★
+            {yoToken?.balance
+              ? (
+                  Math.floor(parseFloat(formatEther(yoToken?.balance)) * 10) /
+                  10
+                ).toLocaleString()
+              : "0"}{" "}
+            $YO
+          </Button>
+          <Button
+            className="ml-2 h-16 px-6 text-xl font-bold bg-yellow-400 hover:bg-yellow-500 text-black"
+            onClick={() => setShowBuyDrawer(true)}
+          >
+            BUY
+          </Button>
+        </div>
       )}
 
       <div className="flex items-center">
@@ -874,6 +961,79 @@ export function App() {
         </DialogContent>
       </Dialog>
       <UserSheet userId={sheetUserId} onClose={() => setSheetUserId(null)} />
+      <Drawer open={showBuyDrawer} onOpenChange={setShowBuyDrawer}>
+        <DrawerContent className="text-black">
+          <DrawerHeader>
+            <DrawerTitle>Buy $YO Tokens</DrawerTitle>
+            <DrawerDescription>Select amount to purchase</DrawerDescription>
+          </DrawerHeader>
+          <div className="p-4 space-y-4">
+            {[5, 10, 100, 1000].map((amount) => (
+              <Button
+                key={amount}
+                variant={selectedAmount === amount ? "default" : "outline"}
+                className={`w-full h-16 text-lg justify-between ${
+                  selectedAmount === amount
+                    ? "border-2 border-purple-500 bg-white text-black hover:bg-white"
+                    : ""
+                }`}
+                onClick={() => setSelectedAmount(amount)}
+              >
+                <span>{amount} $YO</span>
+                {isBasePriceLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <span className="text-gray-500">
+                    ≈ $
+                    {basePrice
+                      ? (basePrice.yoPriceUsd * amount).toFixed(2)
+                      : "0.00"}
+                  </span>
+                )}
+              </Button>
+            ))}
+          </div>
+          <div className="text-sm text-gray-500 text-center">
+            Outputs may vary due to slippage
+          </div>
+          <DrawerFooter className="flex flex-col gap-2">
+            <Button
+              disabled={!selectedAmount || buyMutation.isPending || isPending}
+              onClick={() => buyMutation.mutate()}
+              className={`w-full h-12 ${
+                !selectedAmount || buyMutation.isPending || isPending
+                  ? ""
+                  : "bg-purple-500 hover:bg-purple-600"
+              }`}
+            >
+              {buyMutation.isPending || isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isPending ? "Confirming..." : "Preparing..."}
+                </>
+              ) : (
+                `Buy ${selectedAmount} $YO`
+              )}
+            </Button>
+
+            {/* New button to open Uniswap */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                sdk.actions.openUrl(
+                  `https://app.uniswap.org/swap?chain=base&inputCurrency=NATIVE&outputCurrency=${YO_TOKEN_ADDRESS}&field=output`
+                );
+              }}
+            >
+              Buy on Uniswap
+            </Button>
+
+            <DrawerClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
