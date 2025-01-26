@@ -19,14 +19,18 @@ import { NodePostgresAdapter } from "@lucia-auth/adapter-postgresql";
 
 const { Pool } = pg;
 
-const pool = new Pool({
-  max: 20,
-  connectionString: process.env.DATABASE_URL,
-});
+const createPool = (connectionString: string) =>
+  new Pool({
+    max: 1, // Keep this low for serverless
+    connectionString,
+  });
+
+// Create a single shared pool instance
+const pool = createPool(process.env.DATABASE_URL!);
 
 export const getDbClient = (
   connectionString: string | undefined = process.env.DATABASE_URL,
-  pool: pg.Pool | undefined = undefined
+  customPool: pg.Pool | undefined = undefined
 ) => {
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
@@ -34,12 +38,7 @@ export const getDbClient = (
 
   return new Kysely<Tables>({
     dialect: new PostgresDialect({
-      pool:
-        pool ??
-        new Pool({
-          max: 20,
-          connectionString,
-        }),
+      pool: customPool ?? createPool(connectionString),
       cursor: Cursor,
     }),
     plugins: [new CamelCasePlugin()],

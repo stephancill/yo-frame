@@ -1,7 +1,6 @@
 import { withAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getUserDatasCached } from "@/lib/farcaster";
-import { withCache } from "@/lib/redis";
 import { sql } from "kysely";
 
 export const GET = withAuth(async (req, user) => {
@@ -11,58 +10,48 @@ export const GET = withAuth(async (req, user) => {
   const limit = 50;
   const offset = cursor ? parseInt(cursor) : 0;
 
-  // Create a cache key based on the type and cursor
-  const cacheKey = `leaderboard:${type}:${offset}`;
-
-  // Wrap the main leaderboard query in the cache function
-  const leaderboard = await withCache(
-    cacheKey,
-    async () => {
-      const orderByStatement =
-        type === "onchain"
-          ? sql`(
+  const orderByStatement =
+    type === "onchain"
+      ? sql`(
         (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true) +
         (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)
       )`
-          : sql`(
+      : sql`(
         (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id) +
         (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)
       )`;
 
-      // Main leaderboard query
-      let query = db
-        .selectFrom("users")
-        .select([
-          "users.fid",
-          sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id)`.as(
-            "messages_sent"
-          ),
-          sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)`.as(
-            "messages_received"
-          ),
-          sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true)`.as(
-            "messages_sent_onchain"
-          ),
-          sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)`.as(
-            "messages_received_onchain"
-          ),
-          sql<number>`(
-            (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id) +
-            (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)
-          )`.as("total_messages"),
-          sql<number>`(
-            (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true) +
-            (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)
-          )`.as("total_messages_onchain"),
-        ])
-        .orderBy(orderByStatement, "desc")
-        .offset(offset)
-        .limit(limit + 1);
+  // Main leaderboard query
+  let query = db
+    .selectFrom("users")
+    .select([
+      "users.fid",
+      sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id)`.as(
+        "messages_sent"
+      ),
+      sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)`.as(
+        "messages_received"
+      ),
+      sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true)`.as(
+        "messages_sent_onchain"
+      ),
+      sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)`.as(
+        "messages_received_onchain"
+      ),
+      sql<number>`(
+        (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id) +
+        (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)
+      )`.as("total_messages"),
+      sql<number>`(
+        (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true) +
+        (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)
+      )`.as("total_messages_onchain"),
+    ])
+    .orderBy(orderByStatement, "desc")
+    .offset(offset)
+    .limit(limit + 1);
 
-      return query.execute();
-    },
-    { ttl: 60 * 60 } // Cache for 1 hour
-  );
+  const leaderboard = await query.execute();
 
   // Get current user stats (keeping rank calculation here)
   const rankStatement =
