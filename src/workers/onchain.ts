@@ -90,11 +90,18 @@ export const onchainMessageWorker = new Worker<OnchainMessageJobData>(
         .limit(1)
         .executeTakeFirst();
 
-      if (!lastMessage?.timeoutElapsed) {
+      if (
+        !lastMessage?.timeoutElapsed &&
+        lastMessage?.fromUserId === fromUserId
+      ) {
         console.log(
           "Rejecting message: sender must wait 24 hours between messages"
         );
-        return;
+        return {
+          success: false,
+          message:
+            "Rejecting message: sender must wait 24 hours between messages",
+        };
       }
     }
 
@@ -145,6 +152,11 @@ export const onchainMessageWorker = new Worker<OnchainMessageJobData>(
         targetUrl: process.env.APP_URL,
       });
     }
+
+    return {
+      success: true,
+      message: "Message sent",
+    };
   },
   { connection: redisQueue, concurrency: 5 }
 );
