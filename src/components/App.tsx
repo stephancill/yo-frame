@@ -71,6 +71,7 @@ import { useSession } from "../providers/SessionProvider";
 import { NotificationPreview } from "./NotificationPreview";
 import { UserRow } from "./UserRow";
 import { UserSheet } from "./UserSheet";
+import { Skeleton } from "./ui/skeleton";
 
 type Message = {
   id: string;
@@ -281,7 +282,7 @@ export function App() {
   });
 
   const [showBuyDrawer, setShowBuyDrawer] = useState(false);
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(5);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(5000);
 
   const {
     data: basePrice,
@@ -315,19 +316,29 @@ export function App() {
   const priceQuote = useMemo(() => {
     if (!basePrice || !selectedAmount) return null;
 
-    // Amount of eth to sell to get the selected amount of $YO
-    const sellAmount = parseEther(
-      (
-        (basePrice.yoPriceUsd * selectedAmount) /
-        basePrice.ethUsdPrice
-      ).toString()
+    const yoPriceUsdBI = BigInt(
+      Math.floor(basePrice.yoPriceUsd * 1e18).toString()
     );
+    const ethUsdPriceBI =
+      BigInt(Math.floor(basePrice.ethUsdPrice).toString()) * BigInt(1e18);
+
+    // Amount of eth to sell to get the selected amount of $YO
+    const sellAmount =
+      (yoPriceUsdBI * BigInt(selectedAmount) * BigInt(1e18)) / ethUsdPriceBI;
 
     return {
       ...basePrice,
       sellAmount,
     };
   }, [basePrice, selectedAmount]);
+
+  const userAddressVerified = useMemo(() => {
+    if (!user || !account.address) return false;
+
+    return user.neynarUser.verified_addresses.eth_addresses.find(
+      (address) => address.toLowerCase() === account.address!.toLowerCase()
+    );
+  }, [user, account.address]);
 
   const buyMutation = useMutation({
     mutationFn: async () => {
@@ -712,6 +723,7 @@ export function App() {
                 size="lg"
                 className="text-lg p-4 flex-1 uppercase grow-1 w-full font-bold"
                 disabled={
+                  !userAddressVerified ||
                   selectedUsers.size === 0 ||
                   !yoToken?.balance ||
                   !yoToken?.yoAmount ||
@@ -763,6 +775,8 @@ export function App() {
                   </>
                 ) : showConfirmation ? (
                   "Confirmed!"
+                ) : !userAddressVerified ? (
+                  "Connected Address Not Verified"
                 ) : selectedUsers.size > 0 ? (
                   `SEND SUPER YO (${selectedUsers.size}${
                     yoToken?.balance && yoToken?.yoAmount
@@ -771,6 +785,14 @@ export function App() {
                         )}`
                       : ""
                   })`
+                ) : (yoToken?.balance !== undefined &&
+                    yoToken?.yoAmount !== undefined &&
+                    yoToken.balance < yoToken.yoAmount) ||
+                  selectedUsers.size >
+                    Math.floor(
+                      Number(yoToken?.balance) / Number(yoToken?.yoAmount)
+                    ) ? (
+                  "Insufficient $YO"
                 ) : (
                   "Select users"
                 )}
@@ -847,7 +869,6 @@ export function App() {
         open={showSelfNotificationDialog && !notShowSelfNotificationDialog}
         onOpenChange={(v) => {
           setShowSelfNotificationDialog(v);
-          console.log("onOpenChange", v);
           if (!v) {
             setNotShowSelfNotificationDialog(true);
           }
@@ -1019,8 +1040,7 @@ export function App() {
                 setTimeout(() => setShowCopyCheck(false), 2000);
               }}
             >
-              {YO_TOKEN_ADDRESS.slice(0, 6)}...
-              {YO_TOKEN_ADDRESS.slice(-4)}
+              {YO_TOKEN_ADDRESS.slice(0, 6)}...{YO_TOKEN_ADDRESS.slice(-4)}
               <Button variant="ghost" size="sm" className="h-6 px-2">
                 {showCopyCheck ? (
                   <Check className="h-3 w-3" />
@@ -1042,8 +1062,29 @@ export function App() {
                   Retry
                 </Button>
               </div>
+            ) : isBalanceLoading || isBasePriceLoading ? (
+              <>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ))}
+              </>
             ) : (
-              [5, 10, 100, 1000].map((amount) => (
+              [
+                yoToken?.yoAmount
+                  ? parseFloat(formatEther(yoToken.yoAmount)) * 5
+                  : 5000,
+                yoToken?.yoAmount
+                  ? parseFloat(formatEther(yoToken.yoAmount)) * 10
+                  : 10000,
+                yoToken?.yoAmount
+                  ? parseFloat(formatEther(yoToken.yoAmount)) * 100
+                  : 100000,
+                yoToken?.yoAmount
+                  ? parseFloat(formatEther(yoToken.yoAmount)) * 1000
+                  : 1000000,
+              ].map((amount) => (
                 <Button
                   key={amount}
                   variant={selectedAmount === amount ? "default" : "outline"}
@@ -1054,17 +1095,13 @@ export function App() {
                   }`}
                   onClick={() => setSelectedAmount(amount)}
                 >
-                  <span>{amount} $YO</span>
-                  {isBasePriceLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <span className="text-gray-500">
-                      ≈ $
-                      {basePrice
-                        ? (basePrice.yoPriceUsd * amount).toFixed(2)
-                        : "0.00"}
-                    </span>
-                  )}
+                  <span>{formatNumber(amount)} $YO</span>
+                  <span className="text-gray-500">
+                    ≈ $
+                    {basePrice
+                      ? (basePrice.yoPriceUsd * amount).toFixed(2)
+                      : "0.00"}
+                  </span>
                 </Button>
               ))
             )}
@@ -1079,14 +1116,16 @@ export function App() {
                   !selectedAmount ||
                   buyMutation.isPending ||
                   isBuyPending ||
-                  isBasePriceLoading
+                  isBasePriceLoading ||
+                  isBalanceLoading
                 }
                 onClick={() => buyMutation.mutate()}
                 className={`w-full h-12 ${
                   !selectedAmount ||
                   buyMutation.isPending ||
                   isBuyPending ||
-                  isBasePriceLoading
+                  isBasePriceLoading ||
+                  isBalanceLoading
                     ? ""
                     : "bg-purple-500 hover:bg-purple-600"
                 }`}
@@ -1096,6 +1135,8 @@ export function App() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     {isBuyPending ? "Confirming..." : "Preparing..."}
                   </>
+                ) : isBalanceLoading || isBasePriceLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   `Buy ${selectedAmount} $YO`
                 )}
@@ -1112,10 +1153,6 @@ export function App() {
             >
               Buy on Uniswap <ExternalLink className="h-4 w-4" />
             </Button>
-
-            <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
@@ -1125,18 +1162,19 @@ export function App() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-purple-500">Super YO</DialogTitle>
-            <DialogDescription>
-              <ul className="space-y-2 mt-2">
-                <li>Send on-chain YOs that are stored forever on Base.</li>
-                <li>
-                  Each Super Yo transfers{" "}
-                  {yoToken?.yoAmount ? formatEther(yoToken.yoAmount) : "0"} $YO
-                  to the recipient.
-                </li>
-              </ul>
-            </DialogDescription>
+            <DialogTitle className="text-purple-500">
+              Super YO ($YO)
+            </DialogTitle>
+            <DialogDescription></DialogDescription>
           </DialogHeader>
+          <div className="space-y-2 mt-2">
+            <div>Send on-chain YOs that are stored forever on Base.</div>
+            <div>
+              Each Super Yo transfers{" "}
+              {yoToken?.yoAmount ? formatEther(yoToken.yoAmount) : "0"} $YO to
+              the recipient.
+            </div>
+          </div>
           <div className="flex justify-end">
             <Button onClick={() => setShowSuperYoInfoDialog(false)}>
               Got it
