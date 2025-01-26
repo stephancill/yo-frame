@@ -1,6 +1,6 @@
 import { Worker } from "bullmq";
 import { sql } from "kysely";
-import { getAddress } from "viem/utils";
+import { decodeAbiParameters, getAddress, hexToString } from "viem/utils";
 import { ONCHAIN_MESSAGE_QUEUE_NAME } from "../lib/constants";
 import { db } from "../lib/db";
 import { getUsersByAddresses } from "../lib/farcaster";
@@ -14,18 +14,54 @@ export const onchainMessageWorker = new Worker<OnchainMessageJobData>(
     const { transactionHash, fromAddress, toAddress, amount, data } = job.data;
 
     // Look up user accounts from addresses
-    const { [fromAddress]: fromUser, [toAddress]: toUser } =
+    const { [fromAddress]: fromUsers, [toAddress]: toUsers } =
       await getUsersByAddresses([
         getAddress(fromAddress),
         getAddress(toAddress),
       ]);
+
+    if (!fromUsers || !toUsers) {
+      console.log("Farcaster user not found", {
+        fromAddress,
+        toAddress,
+      });
+      return {
+        success: false,
+        message: "Farcaster user not found",
+      };
+    }
+
+    let desiredFromFid: number | undefined = undefined;
+    let desiredToFid: number | undefined = undefined;
+
+    if (data.length > 0) {
+      try {
+        const metadata = JSON.parse(
+          hexToString(decodeAbiParameters([{ type: "bytes" }], data)[0])
+        );
+        desiredFromFid = metadata.fromFid;
+        desiredToFid = metadata.toFid;
+      } catch (error) {
+        console.error("Failed to parse metadata", error);
+      }
+    }
+
+    const fromUser = desiredFromFid
+      ? fromUsers.find((u) => u.fid === desiredFromFid)
+      : fromUsers[0];
+    const toUser = desiredToFid
+      ? toUsers.find((u) => u.fid === desiredToFid)
+      : toUsers[0];
 
     if (!fromUser || !toUser) {
       console.log("Farcaster user not found", {
         [fromAddress]: fromUser?.fid,
         [toAddress]: toUser?.fid,
       });
-      return;
+      return {
+        success: false,
+        message: "Farcaster user not found",
+      };
     }
 
     // Look up or create users in db
@@ -156,6 +192,8 @@ export const onchainMessageWorker = new Worker<OnchainMessageJobData>(
     return {
       success: true,
       message: "Message sent",
+      fromFid: fromUser.fid,
+      toFid: toUser.fid,
     };
   },
   { connection: redisQueue, concurrency: 5 }

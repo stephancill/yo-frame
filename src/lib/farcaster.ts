@@ -268,11 +268,11 @@ export async function getUsersByAddresses(addresses: `0x${string}`[]) {
   const uncachedAddresses: `0x${string}`[] = [];
 
   const result = cachedUsers.reduce<
-    Record<`0x${string}`, NeynarUser | undefined>
+    Record<`0x${string}`, NeynarUser[] | undefined>
   >((acc, user, index) => {
     const address = addresses[index];
     if (user) {
-      acc[address] = user;
+      acc[address] = [user];
     } else {
       uncachedAddresses.push(address);
     }
@@ -288,15 +288,13 @@ export async function getUsersByAddresses(addresses: `0x${string}`[]) {
     addresses: uncachedAddresses,
   });
 
-  console.log("res", res);
-
   // Cache fetched users and add to result
   await redisCache.mset(
     Object.entries(res).map(([addressRaw, users]) => {
       const addressKey = getAddress(addressRaw) as `0x${string}`;
       // Update result
-      result[addressKey] = users[0];
-      return [getUserDataByAddressKey(addressKey), JSON.stringify(users[0])];
+      result[addressKey] = users;
+      return [getUserDataByAddressKey(addressKey), JSON.stringify(users)];
     })
   );
 
