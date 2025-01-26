@@ -692,7 +692,6 @@ export function App() {
                     setSuperYoMode(!superYoMode);
                     setSelectedUsers(new Set());
                   }}
-                  disabled={true}
                 >
                   <span className="text-xl">$YO</span>
                 </Button>
