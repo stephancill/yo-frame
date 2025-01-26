@@ -1184,7 +1184,7 @@ export function App() {
             </DialogTitle>
             <DialogDescription></DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 mt-2">
+          <div className="space-y-2 mt-2 text-black">
             <div>Send on-chain YOs that are stored forever on Base.</div>
             <div>
               Each Super Yo transfers{" "}
