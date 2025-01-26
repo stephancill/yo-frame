@@ -42,6 +42,11 @@ export async function startEventListener() {
           },
           {
             jobId: `${transactionHash}-${log.logIndex}`,
+            attempts: 2,
+            backoff: {
+              type: "fixed",
+              delay: 30_000,
+            },
           }
         );
 
