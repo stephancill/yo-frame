@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { YO_TOKEN_ADDRESS } from "../../../lib/constants";
 import { withAuth } from "../../../lib/auth";
 
-const API_KEY = process.env["0X_API_KEY"];
+const API_KEY = process.env.ZEROX_API_KEY;
 const BASE_URL = "https://api.0x.org/swap/permit2";
 
 export const GET = withAuth(async (request: Request) => {
