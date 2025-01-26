@@ -41,6 +41,12 @@ export const GET = withAuth(async (req, user) => {
             "messages"."from_user_id" = ${user.id} 
             AND "messages"."created_at" > NOW() - INTERVAL '1 day'
           `.as("disabled"),
+          "messages.isOnchain",
+          sql<number>`COUNT(CASE WHEN "messages"."is_onchain" = true THEN 1 END) OVER (
+            PARTITION BY 
+              LEAST("from_user"."id", "to_user"."id"),
+              GREATEST("from_user"."id", "to_user"."id")
+          )`.as("onchainMessageCount"),
         ])
         .where((eb) =>
           eb.or([eb("fromUserId", "=", user.id), eb("toUserId", "=", user.id)])

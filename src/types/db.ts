@@ -23,6 +23,8 @@ export interface MessageRow {
   toUserId: string;
   message: string;
   createdAt: Generated<Date>;
+  isOnchain: Generated<boolean>;
+  transactionHash: `0x${string}` | null;
 }
 
 export type Tables = {

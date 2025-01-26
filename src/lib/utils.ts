@@ -1,5 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { mainnet } from "viem/chains";
+import { createPublicClient, http } from "viem";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -80,4 +82,40 @@ export function formatNumber(num: number): string {
   const formatted = (num / 1000).toFixed(1);
   // Remove trailing .0 if present
   return `${formatted.endsWith(".0") ? formatted.slice(0, -2) : formatted}K`;
+}
+
+/**
+ * Looks up the current price of ETH in USD via Chainlink's ETH/USDC price feed.
+ * @returns The current price of ETH in USD.
+ */
+export async function getEthUsdPrice(): Promise<number> {
+  const client = createPublicClient({
+    transport: http(),
+    chain: mainnet,
+  });
+
+  const [, answer] = await client.readContract({
+    abi: [
+      {
+        inputs: [],
+        name: "latestRoundData",
+        outputs: [
+          { internalType: "uint80", name: "roundId", type: "uint80" },
+          { internalType: "int256", name: "answer", type: "int256" },
+          { internalType: "uint256", name: "startedAt", type: "uint256" },
+          { internalType: "uint256", name: "updatedAt", type: "uint256" },
+          { internalType: "uint80", name: "answeredInRound", type: "uint80" },
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
+    functionName: "latestRoundData",
+    // https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1&search=usdc#ethereum-mainnet
+    address: "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4",
+  });
+
+  const ethPriceUsd = 1e18 / Number(answer);
+
+  return ethPriceUsd;
 }

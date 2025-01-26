@@ -12,9 +12,11 @@
     "workers": "tsx src/workers/index.ts",
     "db:reset": "docker-compose down -v && docker-compose up -d",
     "db:seed": "tsx src/scripts/seed.ts",
-    "batch-notifications": "tsx src/scripts/batch-notifications.ts"
+    "batch-notifications": "tsx src/scripts/batch-notifications.ts",
+    "onchain-listener": "tsx src/scripts/onchain-listener.ts"
   },
   "dependencies": {
+    "@0x/swap-ts-sdk": "2.1.1",
     "@bull-board/api": "^6.5.4",
     "@bull-board/express": "^6.5.4",
     "@duneanalytics/client-sdk": "^0.2.5",
@@ -22,12 +24,14 @@
     "@farcaster/core": "^0.15.6",
     "@farcaster/frame-node": "^0.0.10",
     "@farcaster/frame-sdk": "^0.0.26",
+    "@farcaster/frame-wagmi-connector": "^0.0.14",
     "@lucia-auth/adapter-postgresql": "^3.1.2",
     "@neynar/nodejs-sdk": "^2.7.0",
     "@radix-ui/react-avatar": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-select": "^2.1.4",
     "@radix-ui/react-slot": "^1.1.1",
+    "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-toast": "^1.2.4",
     "@sentry/nextjs": "^8.48.0",
     "@tanstack/react-query": "^5.62.7",
@@ -55,7 +59,9 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "use-debounce": "^10.0.4",
-    "viem": "^2.21.57",
+    "vaul": "^1.1.2",
+    "viem": "^2.22.8",
+    "wagmi": "^2.14.9",
     "zod": "^3.24.1"
   },
   "devDependencies": {

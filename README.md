@@ -1,6 +1,10 @@
-# Stephan's Frames v2 Starter
+# Yo Frame
 
-This is an opinionated starter for building v2 frames
+This repo contains the code for the Yo Frame.
+
+## Architecture
+
+TODO
 
 ## Stack
 - Next.js

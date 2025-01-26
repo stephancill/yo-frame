@@ -128,3 +128,26 @@
   -ms-user-select: none; /* IE 10 and IE 11 */
   user-select: none; /* Standard syntax */
 }
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.rainbow-gradient {
+  background: linear-gradient(
+    to right,
+    #ef4444,
+    #eab308,
+    #22c55e,
+    #3b82f6,
+    #a855f7,
+    #ef4444
+  );
+  background-size: 200% auto;
+  animation: gradient 3s linear infinite;
+}

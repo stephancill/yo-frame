@@ -9,3 +9,11 @@ export type NotificationsBulkJobData = {
   targetUrl: string;
   notificationId?: string;
 };
+
+export type OnchainMessageJobData = {
+  transactionHash: `0x${string}`;
+  fromAddress: `0x${string}`;
+  toAddress: `0x${string}`;
+  amount: string;
+  data: `0x${string}`;
+};

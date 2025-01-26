@@ -104,6 +104,7 @@ async function main() {
           toUserId: toUser.id,
           message: `yo`,
           createdAt: timestamp,
+          isOnchain: Math.random() < 0.1, // 10% chance of being onchain
         };
       })
     )

@@ -1,4 +1,4 @@
-import { UserDehydrated } from "@neynar/nodejs-sdk/build/api";
+import { User as NeynarUser } from "@neynar/nodejs-sdk/build/api";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2, UserRoundSearch } from "lucide-react";
 import Link from "next/link";
@@ -26,10 +26,12 @@ export function UserSheet({ userId, onClose }: UserSheetProps) {
       const res = await authFetch(`/api/users/${userId}`);
       if (!res.ok) throw new Error("Failed to fetch user");
       return res.json() as Promise<{
-        userData: UserDehydrated;
+        userData: NeynarUser;
         messageCounts: {
           inbound: number;
           outbound: number;
+          inboundOnchain: number;
+          outboundOnchain: number;
         };
         rank: number;
       }>;
@@ -77,16 +79,48 @@ export function UserSheet({ userId, onClose }: UserSheetProps) {
                   <div className="flex space-x-12 text-xl font-bold">
                     <div className="text-center">
                       <div>
-                        {formatNumber(userQuery.data.messageCounts.outbound)}
+                        {userQuery.data.messageCounts.outboundOnchain > 0 ? (
+                          <>
+                            {formatNumber(
+                              userQuery.data.messageCounts.outboundOnchain
+                            )}{" "}
+                            ★{" "}
+                            <span className="text-gray-500 text-sm">
+                              /{" "}
+                              {formatNumber(
+                                userQuery.data.messageCounts.outbound
+                              )}
+                            </span>
+                          </>
+                        ) : (
+                          formatNumber(userQuery.data.messageCounts.outbound)
+                        )}
                       </div>
                       <div className="text-sm">SENT</div>
                     </div>
                     <div className="text-center">
                       <div>
-                        {formatNumber(
-                          sendMessageMutation.isSuccess
-                            ? userQuery.data.messageCounts.inbound + 1
-                            : userQuery.data.messageCounts.inbound
+                        {userQuery.data.messageCounts.inboundOnchain > 0 ? (
+                          <>
+                            {formatNumber(
+                              userQuery.data.messageCounts.inboundOnchain
+                            )}{" "}
+                            ★{" "}
+                            <span className="text-gray-500 text-sm">
+                              /{" "}
+                              {formatNumber(
+                                sendMessageMutation.isSuccess
+                                  ? userQuery.data.messageCounts.inbound + 1
+                                  : userQuery.data.messageCounts.inbound
+                              )}
+                            </span>
+                          </>
+                        ) : (
+                          formatNumber(
+                            sendMessageMutation.isSuccess
+                              ? userQuery.data.messageCounts.inbound + 1
+                              : userQuery.data.messageCounts.inbound
+                          )
                         )}
                       </div>
                       <div className="text-sm">RECEIVED</div>

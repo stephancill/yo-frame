@@ -10,6 +10,7 @@ import { twMerge } from "tailwind-merge";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { UserSheet } from "./UserSheet";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 
 type LeaderboardEntry = {
   fid: number;
@@ -107,6 +108,7 @@ export function Leaderboard() {
   const { authFetch } = useSession();
   const { ref, inView } = useInView();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [type, setType] = useState<"onchain" | "total">("onchain");
 
   const {
     data,
@@ -116,10 +118,11 @@ export function Leaderboard() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["leaderboard"],
+    queryKey: ["leaderboard", type],
     queryFn: async ({ pageParam = 0 }) => {
       const url = new URL("/api/leaderboard", window.location.origin);
       url.searchParams.set("cursor", pageParam.toString());
+      url.searchParams.set("type", type);
       const res = await authFetch(url);
       if (!res.ok) throw new Error("Failed to fetch leaderboard");
       return res.json() as Promise<LeaderboardResponse>;
@@ -153,6 +156,18 @@ export function Leaderboard() {
           <ArrowLeft size={24} />
         </Link>
         <h1 className="text-3xl font-bold">Leaderboard</h1>
+      </div>
+
+      <div className="px-4 mb-4">
+        <Tabs
+          value={type}
+          onValueChange={(v) => setType(v as "onchain" | "total")}
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="onchain">Onchain</TabsTrigger>
+            <TabsTrigger value="total">Total</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       <div className="w-full">

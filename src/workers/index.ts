@@ -15,6 +15,7 @@ Sentry.init({
 import { initExpressApp } from "../lib/bullboard";
 
 export { notificationsBulkWorker } from "./notifications";
+export { onchainMessageWorker } from "./onchain";
 
 // Run bull board
 initExpressApp();

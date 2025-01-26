@@ -1,7 +1,7 @@
 import { withAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { User } from "@/types/user";
-import { sql } from "kysely";
+import { getUserDatasCached } from "../../../lib/farcaster";
 
 export const GET = withAuth(async (req, luciaUser) => {
   // Check if the fid is already registered
@@ -15,11 +15,14 @@ export const GET = withAuth(async (req, luciaUser) => {
     return Response.json({ error: "User not found" }, { status: 400 });
   }
 
+  const [userData] = await getUserDatasCached([dbUser.fid]);
+
   const user: User = {
     fid: dbUser.fid,
     id: dbUser.id,
     notificationsEnabled: dbUser.notificationUrl !== null,
     notificationType: dbUser.notificationType,
+    neynarUser: userData,
   };
 
   return Response.json(user);

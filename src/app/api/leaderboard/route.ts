@@ -6,10 +6,22 @@ import { sql } from "kysely";
 export const GET = withAuth(async (req, user) => {
   const { searchParams } = new URL(req.url);
   const cursor = searchParams.get("cursor");
+  const type = searchParams.get("type") || "onchain"; // defaults to onchain
   const limit = 50;
   const offset = cursor ? parseInt(cursor) : 0;
 
-  // Main leaderboard query without rank
+  const orderByStatement =
+    type === "onchain"
+      ? sql`(
+        (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true) +
+        (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)
+      )`
+      : sql`(
+        (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id) +
+        (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)
+      )`;
+
+  // Main leaderboard query
   let query = db
     .selectFrom("users")
     .select([
@@ -20,24 +32,53 @@ export const GET = withAuth(async (req, user) => {
       sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)`.as(
         "messages_received"
       ),
+      sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true)`.as(
+        "messages_sent_onchain"
+      ),
+      sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)`.as(
+        "messages_received_onchain"
+      ),
       sql<number>`(
         (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id) +
         (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)
       )`.as("total_messages"),
+      sql<number>`(
+        (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true) +
+        (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)
+      )`.as("total_messages_onchain"),
     ])
-    .orderBy(
-      sql`(
-      (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id) +
-      (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)
-    )`,
-      "desc"
-    )
+    .orderBy(orderByStatement, "desc")
     .offset(offset)
     .limit(limit + 1);
 
   const leaderboard = await query.execute();
 
   // Get current user stats (keeping rank calculation here)
+  const rankStatement =
+    type === "onchain"
+      ? sql<number>`(
+        SELECT COUNT(*) + 1 FROM users AS u2 
+        WHERE (
+          SELECT COUNT(*) FROM messages 
+          WHERE (from_user_id = u2.id OR to_user_id = u2.id) 
+          AND is_onchain = true
+        ) > (
+          SELECT COUNT(*) FROM messages 
+          WHERE (from_user_id = users.id OR to_user_id = users.id)
+          AND is_onchain = true
+        )
+      )`
+      : sql<number>`(
+        SELECT COUNT(*) + 1 FROM users AS u2 
+        WHERE (
+          SELECT COUNT(*) FROM messages 
+          WHERE (from_user_id = u2.id OR to_user_id = u2.id)
+        ) > (
+          SELECT COUNT(*) FROM messages 
+          WHERE (from_user_id = users.id OR to_user_id = users.id)
+        )
+      )`;
+
   const currentUserStats = await db
     .selectFrom("users")
     .select([
@@ -48,18 +89,21 @@ export const GET = withAuth(async (req, user) => {
       sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)`.as(
         "messages_received"
       ),
+      sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true)`.as(
+        "messages_sent_onchain"
+      ),
+      sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)`.as(
+        "messages_received_onchain"
+      ),
       sql<number>`(
         (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id) +
         (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)
       )`.as("total_messages"),
       sql<number>`(
-        SELECT COUNT(*) + 1 FROM users AS u2 
-        WHERE (
-          SELECT COUNT(*) FROM messages WHERE from_user_id = u2.id OR to_user_id = u2.id
-        ) > (
-          SELECT COUNT(*) FROM messages WHERE from_user_id = users.id OR to_user_id = users.id
-        )
-      )`.as("rank"),
+        (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true) +
+        (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)
+      )`.as("total_messages_onchain"),
+      rankStatement.as("rank"),
     ])
     .where("users.id", "=", user.id)
     .executeTakeFirst();

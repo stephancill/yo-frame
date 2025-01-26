@@ -8,8 +8,8 @@ import { useEffect } from "react";
 import { UserRow } from "../../components/UserRow";
 import { getFidColor } from "../../lib/utils";
 import { useSession } from "../../providers/SessionProvider";
-import { UserDehydrated } from "@neynar/nodejs-sdk/build/api";
 import { Button } from "../../components/ui/button";
+import { User as NeynarUser } from "@neynar/nodejs-sdk/build/api";
 
 type Friend = {
   id: string;
@@ -19,7 +19,7 @@ type Friend = {
 
 type FriendsResponse = {
   rows: Friend[];
-  users: Record<number, UserDehydrated>;
+  users: Record<number, NeynarUser>;
   nextCursor: string | null;
 };
 
