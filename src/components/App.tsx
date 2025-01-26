@@ -43,8 +43,10 @@ import { base } from "viem/chains";
 import { formatEther, parseEther } from "viem/utils";
 import {
   useAccount,
+  useChainId,
   useReadContracts,
   useSendTransaction,
+  useSwitchChain,
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { yoTokenAbi } from "../abi/yoTokenAbi";
@@ -102,6 +104,9 @@ type MessagesResponse = {
 
 export function App() {
   const account = useAccount();
+  const chainId = useChainId();
+  const { data: switchChainData, switchChain } = useSwitchChain();
+
   const {
     data: yoTokenResults,
     isLoading: isBalanceLoading,
@@ -343,6 +348,7 @@ export function App() {
   const buyMutation = useMutation({
     mutationFn: async () => {
       if (!selectedAmount || !priceQuote) throw new Error("Invalid state");
+      switchChain({ chainId: base.id });
       const res = await authFetch("/api/quote", {
         method: "POST",
         body: JSON.stringify({
@@ -354,7 +360,7 @@ export function App() {
       return res.json();
     },
     onSuccess: (data) => {
-      sendSuperYoTransaction(
+      sendBuyTransaction(
         {
           to: data.transaction.to,
           data: data.transaction.data,
@@ -418,9 +424,16 @@ export function App() {
 
   useEffect(() => {
     if (buyReceipt) {
+      setShowBuyDrawer(false);
       refetchBalance();
     }
   }, [buyReceipt]);
+
+  useEffect(() => {
+    if (chainId !== base.id && account.address && superYoMode) {
+      switchChain({ chainId: base.id });
+    }
+  }, [chainId, account.address, switchChain, superYoMode]);
 
   if (isLoading || isSessionLoading)
     return (
@@ -1094,6 +1107,7 @@ export function App() {
                       : ""
                   }`}
                   onClick={() => setSelectedAmount(amount)}
+                  disabled={isBuyReceiptLoading}
                 >
                   <span>{formatNumber(amount)} $YO</span>
                   <span className="text-gray-500">
@@ -1125,7 +1139,8 @@ export function App() {
                   buyMutation.isPending ||
                   isBuyPending ||
                   isBasePriceLoading ||
-                  isBalanceLoading
+                  isBalanceLoading ||
+                  isBuyReceiptLoading
                     ? ""
                     : "bg-purple-500 hover:bg-purple-600"
                 }`}
@@ -1133,7 +1148,9 @@ export function App() {
                 {buyMutation.isPending || isBuyPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isBuyPending ? "Confirming..." : "Preparing..."}
+                    {isBuyPending || isBuyReceiptLoading
+                      ? "Confirming..."
+                      : "Preparing..."}
                   </>
                 ) : isBalanceLoading || isBasePriceLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
