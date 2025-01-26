@@ -50,9 +50,37 @@ export async function startEventListener() {
     },
     address: YO_TOKEN_ADDRESS,
     events: [
-      parseAbiItem(
-        "event YoEvent(address indexed from, address indexed to, uint256 indexed amount, bytes data)"
-      ),
+      {
+        anonymous: false,
+        inputs: [
+          {
+            indexed: true,
+            internalType: "address",
+            name: "from",
+            type: "address",
+          },
+          {
+            indexed: true,
+            internalType: "address",
+            name: "to",
+            type: "address",
+          },
+          {
+            indexed: true,
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+          {
+            indexed: false,
+            internalType: "bytes",
+            name: "data",
+            type: "bytes",
+          },
+        ],
+        name: "YoEvent",
+        type: "event",
+      },
     ],
   });
 }
