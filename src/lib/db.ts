@@ -62,8 +62,7 @@ export const getAuthAdapter = (
   return adapter;
 };
 
-export const db = getDbClient();
-export const luciaDb = getDbClient();
+export const db = getDbClient(process.env.DATABASE_URL, pool);
 
 const createMigrator = async (db: Kysely<Tables>) => {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
