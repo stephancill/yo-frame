@@ -192,6 +192,8 @@ export const onchainMessageWorker = new Worker<OnchainMessageJobData>(
       message: "Message sent",
       fromFid: fromUser.fid,
       toFid: toUser.fid,
+      desiredFromFid: desiredFromFid ?? null,
+      desiredToFid: desiredToFid ?? null,
     };
   },
   { connection: redisQueue, concurrency: 5 }
