@@ -7,7 +7,7 @@ export const NOTIFICATIONS_BULK_QUEUE_NAME = "notifications-bulk";
 export const ONCHAIN_MESSAGE_QUEUE_NAME = "onchain-message";
 
 export const YO_TOKEN_ADDRESS =
-  "0x6fF27Dda6c941bCD6e9449EB9dd186f584c59522" as const;
+  "0xb55bfc6e66a1b81bf0a92fb177a13e2e54e118e1" as const;
 
 export const FRAME_METADATA = {
   version: "next",
