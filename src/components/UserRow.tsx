@@ -28,24 +28,26 @@ type UserRowProps = {
   animationPhase?: "initial" | "starting" | "complete";
 };
 
-export function UserRow({
-  user,
-  fid,
-  backgroundColor,
-  disabled = false,
-  timestamp,
-  messageCount,
-  onchainMessageCount,
-  isNotificationsEnabled,
-  onMessageSent,
-  onShowNotification,
-  onLongPress,
-  selected = false,
-  onSelect,
-  mode = "message",
-  isSuper = false,
-  animationPhase: animationPhaseOverride,
-}: UserRowProps) {
+export function UserRow(props: UserRowProps) {
+  const {
+    user,
+    fid,
+    backgroundColor,
+    disabled = false,
+    timestamp,
+    messageCount,
+    onchainMessageCount,
+    isNotificationsEnabled,
+    onMessageSent,
+    onShowNotification,
+    onLongPress,
+    selected = false,
+    onSelect,
+    mode = "message",
+    isSuper = false,
+    animationPhase: animationPhaseOverride,
+  } = props;
+
   const [animationPhaseInternal, setAnimationPhaseInternal] = useState<
     "initial" | "starting" | "complete"
   >("initial");
@@ -95,6 +97,8 @@ export function UserRow({
 
   const longPressBind = useLongPress(onLongPress ?? (() => {}), handleClick);
 
+  const isSuperInternal = isSuper && !sendMessageMutation.isSuccess;
+
   return (
     <button
       {...longPressBind}
@@ -104,7 +108,7 @@ export function UserRow({
         animationPhase === "complete"
       }
       className={twMerge(
-        "block w-full text-left hover:brightness-95 relative prevent-select",
+        "block w-full text-left hover:brightness-95 relative prevent-select border-b border-white/50",
         (disabled ||
           sendMessageMutation.isPending ||
           animationPhase === "complete") &&
@@ -112,14 +116,17 @@ export function UserRow({
         animationPhase === "initial" &&
           sendMessageMutation.isError &&
           "animate-[shake_0.5s_ease-in-out]",
-        isSuper &&
-          "p-[2px] bg-gradient-to-r from-yellow-300 via-yellow-400 to-purple-500 animate-[gradient_3s_ease_infinite]"
+        isSuperInternal && "rainbow-gradient"
       )}
-      style={{ backgroundColor: isSuper ? "transparent" : backgroundColor }}
+      style={{
+        backgroundColor: isSuperInternal ? "transparent" : backgroundColor,
+      }}
     >
       <div
-        className={twMerge("relative", isSuper && "bg-[inherit]")}
-        style={{ backgroundColor }}
+        className={twMerge("relative", isSuperInternal && "bg-[inherit]")}
+        style={{
+          backgroundColor: isSuperInternal ? "transparent" : backgroundColor,
+        }}
       >
         <div
           className={twMerge(
@@ -141,15 +148,15 @@ export function UserRow({
             <div className="flex justify-between items-center">
               {messageCount !== undefined && (
                 <span className="text-sm text-white/90 absolute left-4 flex items-center gap-1">
-                  {sendMessageMutation.isSuccess
-                    ? Number(messageCount) + 1
-                    : messageCount}
                   {onchainMessageCount !== undefined &&
                     Number(onchainMessageCount) > 0 && (
                       <span className="inline-flex items-center flex gap-1">
-                        <span>($YO {onchainMessageCount})</span>
+                        <span>{onchainMessageCount} ★ / </span>
                       </span>
                     )}
+                  {sendMessageMutation.isSuccess
+                    ? Number(messageCount) + 1
+                    : messageCount}
                 </span>
               )}
               <div className="flex-1 text-center">
@@ -180,7 +187,7 @@ export function UserRow({
                   <div>
                     <h3 className="text-xl font-bold text-white uppercase flex items-center">
                       {animationPhase === "complete" ? (
-                        isSuper ? (
+                        isSuperInternal ? (
                           <span>super yo sent! ★</span>
                         ) : (
                           <span>yo sent!</span>
@@ -210,6 +217,9 @@ export function UserRow({
           </div>
         </div>
       </div>
+      {/* <div>
+        <pre>{JSON.stringify(props, null, 2)}</pre>
+      </div> */}
     </button>
   );
 }

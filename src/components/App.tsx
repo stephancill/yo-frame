@@ -31,6 +31,7 @@ import {
   X,
   Check,
   ExternalLink,
+  HelpCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -240,6 +241,8 @@ export function App() {
 
   const [showCopyCheck, setShowCopyCheck] = useState(false);
 
+  const [showSuperYoInfoDialog, setShowSuperYoInfoDialog] = useState(false);
+
   const updateNotificationTypeMutation = useMutation({
     mutationFn: async (type: "all" | "hourly") => {
       const response = await authFetch("/api/user/notifications", {
@@ -280,7 +283,12 @@ export function App() {
   const [showBuyDrawer, setShowBuyDrawer] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(5);
 
-  const { data: basePrice, isLoading: isBasePriceLoading } = useQuery({
+  const {
+    data: basePrice,
+    isLoading: isBasePriceLoading,
+    error: basePriceError,
+    refetch: refetchBasePrice,
+  } = useQuery({
     queryKey: ["yoBasePrice"],
     queryFn: async () => {
       const sellAmount = parseFloat(parseEther("0.0001").toString());
@@ -289,17 +297,10 @@ export function App() {
       );
       if (!res.ok) throw new Error("Failed to fetch price");
       const priceData = await res.json();
-      // Get ETH/USD price
       const ethUsdPrice = await getEthUsdPrice();
 
       const yoPriceUsd =
-        1 / (Number(priceData.buyAmount) / sellAmount / ethUsdPrice); // TODO: Change to 1e18
-
-      console.log("yoprice", {
-        ...priceData,
-        ethUsdPrice,
-        yoPriceUsd,
-      });
+        1 / (Number(priceData.buyAmount) / sellAmount / ethUsdPrice);
 
       return {
         ...priceData,
@@ -308,6 +309,7 @@ export function App() {
       };
     },
     enabled: showBuyDrawer,
+    retry: false,
   });
 
   const priceQuote = useMemo(() => {
@@ -422,18 +424,27 @@ export function App() {
     <div className="w-full">
       {!searchQuery && superYoMode && (
         <div className="flex w-full sticky top-0 z-50 bg-black shadow-lg">
-          <div className="h-16 px-4 flex grow items-center gap-2 text-xl font-bold bg-gray-800 text-center">
-            SUPER YO •{" "}
-            {yoToken?.balance
-              ? (
-                  Math.floor(parseFloat(formatEther(yoToken?.balance)) * 10) /
-                  10
-                ).toLocaleString()
-              : "0"}{" "}
-            $YO
-          </div>
+          <button className="h-16 px-4 flex grow w-full items-center gap-2 text-xl font-bold bg-gray-800 text-center rainbow-gradient prevent-select">
+            <div
+              className="flex items-center justify-between w-full"
+              onClick={() => setShowSuperYoInfoDialog(true)}
+            >
+              <div>
+                SUPER YO •{" "}
+                {yoToken?.balance
+                  ? formatNumber(
+                      Math.floor(
+                        parseFloat(formatEther(yoToken?.balance)) * 10
+                      ) / 10
+                    )
+                  : "0"}{" "}
+                $YO
+              </div>
+              <HelpCircle className="h-4 w-4" />
+            </div>
+          </button>
           <Button
-            className="text-xl font-bold uppercase flex gap-1 items-center hover:bg-gray-700"
+            className="text-xl font-bold uppercase flex gap-1 items-center hover:bg-gray-700 px-2"
             size="lg"
             onClick={() => setShowBuyDrawer(true)}
           >
@@ -567,10 +578,10 @@ export function App() {
                       (superYoMode &&
                         !otherUser.verified_addresses.eth_addresses[0]);
 
-                    const isSuperYod =
-                      message.isOnchain || superYodUsers.has(otherUserFid);
+                    const isSuperYodUser = superYodUsers.has(otherUserFid);
+                    const isSuperYod = message.isOnchain || isSuperYodUser;
 
-                    const animationPhaseOverride = isSuperYod
+                    const animationPhaseOverride = isSuperYodUser
                       ? "complete"
                       : undefined;
 
@@ -651,7 +662,7 @@ export function App() {
             <div className="ml-auto flex items-center gap-2">
               {account.address && (
                 <Button
-                  className="px-4 bg-black font-bold shadow-lg"
+                  className="px-4 bg-black font-bold shadow-lg rainbow-gradient"
                   size="lg"
                   onClick={() => {
                     setSuperYoMode(!superYoMode);
@@ -1008,7 +1019,8 @@ export function App() {
                 setTimeout(() => setShowCopyCheck(false), 2000);
               }}
             >
-              {YO_TOKEN_ADDRESS}
+              {YO_TOKEN_ADDRESS.slice(0, 6)}...
+              {YO_TOKEN_ADDRESS.slice(-4)}
               <Button variant="ghost" size="sm" className="h-6 px-2">
                 {showCopyCheck ? (
                   <Check className="h-3 w-3" />
@@ -1017,58 +1029,78 @@ export function App() {
                 )}
               </Button>
             </div>
-            {/* <DrawerDescription>Select amount to purchase</DrawerDescription> */}
           </DrawerHeader>
           <div className="p-4 space-y-4">
-            {[5, 10, 100, 1000].map((amount) => (
-              <Button
-                key={amount}
-                variant={selectedAmount === amount ? "default" : "outline"}
-                className={`w-full h-16 text-lg justify-between ${
-                  selectedAmount === amount
-                    ? "border-2 border-purple-500 bg-white text-black hover:bg-white"
-                    : ""
-                }`}
-                onClick={() => setSelectedAmount(amount)}
-              >
-                <span>{amount} $YO</span>
-                {isBasePriceLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <span className="text-gray-500">
-                    ≈ $
-                    {basePrice
-                      ? (basePrice.yoPriceUsd * amount).toFixed(2)
-                      : "0.00"}
-                  </span>
-                )}
-              </Button>
-            ))}
+            {basePriceError ? (
+              <div className="text-red-500 text-center p-4 space-y-2">
+                <p>Failed to load price quote</p>
+                <Button
+                  variant="outline"
+                  onClick={() => refetchBasePrice()}
+                  className="mx-auto"
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : (
+              [5, 10, 100, 1000].map((amount) => (
+                <Button
+                  key={amount}
+                  variant={selectedAmount === amount ? "default" : "outline"}
+                  className={`w-full h-16 text-lg justify-between ${
+                    selectedAmount === amount
+                      ? "border-2 border-purple-500 bg-white text-black hover:bg-white"
+                      : ""
+                  }`}
+                  onClick={() => setSelectedAmount(amount)}
+                >
+                  <span>{amount} $YO</span>
+                  {isBasePriceLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="text-gray-500">
+                      ≈ $
+                      {basePrice
+                        ? (basePrice.yoPriceUsd * amount).toFixed(2)
+                        : "0.00"}
+                    </span>
+                  )}
+                </Button>
+              ))
+            )}
           </div>
           <div className="text-sm text-gray-500 text-center">
             Actual outputs may vary due to slippage
           </div>
           <DrawerFooter className="flex flex-col gap-2">
-            <Button
-              disabled={
-                !selectedAmount || buyMutation.isPending || isBuyPending
-              }
-              onClick={() => buyMutation.mutate()}
-              className={`w-full h-12 ${
-                !selectedAmount || buyMutation.isPending || isBuyPending
-                  ? ""
-                  : "bg-purple-500 hover:bg-purple-600"
-              }`}
-            >
-              {buyMutation.isPending || isBuyPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isBuyPending ? "Confirming..." : "Preparing..."}
-                </>
-              ) : (
-                `Buy ${selectedAmount} $YO`
-              )}
-            </Button>
+            {!basePriceError && (
+              <Button
+                disabled={
+                  !selectedAmount ||
+                  buyMutation.isPending ||
+                  isBuyPending ||
+                  isBasePriceLoading
+                }
+                onClick={() => buyMutation.mutate()}
+                className={`w-full h-12 ${
+                  !selectedAmount ||
+                  buyMutation.isPending ||
+                  isBuyPending ||
+                  isBasePriceLoading
+                    ? ""
+                    : "bg-purple-500 hover:bg-purple-600"
+                }`}
+              >
+                {buyMutation.isPending || isBuyPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isBuyPending ? "Confirming..." : "Preparing..."}
+                  </>
+                ) : (
+                  `Buy ${selectedAmount} $YO`
+                )}
+              </Button>
+            )}
 
             <Button
               variant="outline"
@@ -1087,6 +1119,31 @@ export function App() {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+      <Dialog
+        open={showSuperYoInfoDialog}
+        onOpenChange={setShowSuperYoInfoDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-purple-500">Super YO</DialogTitle>
+            <DialogDescription>
+              <ul className="space-y-2 mt-2">
+                <li>Send on-chain YOs that are stored forever on Base.</li>
+                <li>
+                  Each Super Yo transfers{" "}
+                  {yoToken?.yoAmount ? formatEther(yoToken.yoAmount) : "0"} $YO
+                  to the recipient.
+                </li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={() => setShowSuperYoInfoDialog(false)}>
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

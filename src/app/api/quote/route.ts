@@ -42,6 +42,14 @@ export const GET = withAuth(async (request: Request) => {
   }
 
   const data = await response.json();
+
+  if (!data.liquidityAvailable) {
+    return NextResponse.json(
+      { error: "No liquidity available", details: data },
+      { status: 400 }
+    );
+  }
+
   return NextResponse.json(data);
 });
 

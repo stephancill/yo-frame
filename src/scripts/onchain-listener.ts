@@ -41,7 +41,7 @@ export async function startEventListener() {
             data: args.data,
           },
           {
-            jobId: transactionHash,
+            jobId: `${transactionHash}-${log.logIndex}`,
           }
         );
 

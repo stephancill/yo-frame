@@ -18,6 +18,12 @@ export const GET = withAuth<{ params: Promise<{ userIdOrFid: string }> }>(
         sql<number>`COUNT(CASE WHEN messages.to_user_id = users.id THEN 1 END)`.as(
           "inbound"
         ),
+        sql<number>`COUNT(CASE WHEN messages.from_user_id = users.id AND messages.is_onchain = true THEN 1 END)`.as(
+          "outboundOnchain"
+        ),
+        sql<number>`COUNT(CASE WHEN messages.to_user_id = users.id AND messages.is_onchain = true THEN 1 END)`.as(
+          "inboundOnchain"
+        ),
         sql<number>`(
           SELECT COUNT(*) + 1 FROM users AS u2 
           WHERE (
@@ -56,6 +62,8 @@ export const GET = withAuth<{ params: Promise<{ userIdOrFid: string }> }>(
       messageCounts: {
         inbound: Number(dbUser.inbound || 0),
         outbound: Number(dbUser.outbound || 0),
+        inboundOnchain: Number(dbUser.inboundOnchain || 0),
+        outboundOnchain: Number(dbUser.outboundOnchain || 0),
       },
       rank: Number(dbUser.rank || 0),
     });
