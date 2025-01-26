@@ -36,9 +36,7 @@ export const onchainMessageWorker = new Worker<OnchainMessageJobData>(
 
     if (data.length > 0) {
       try {
-        const metadata = JSON.parse(
-          hexToString(decodeAbiParameters([{ type: "bytes" }], data)[0])
-        );
+        const metadata = JSON.parse(hexToString(data));
         desiredFromFid = metadata.fromFid;
         desiredToFid = metadata.toFid;
       } catch (error) {
