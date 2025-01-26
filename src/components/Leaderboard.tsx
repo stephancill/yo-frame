@@ -95,7 +95,7 @@ function LeaderboardRow({
           </div>
           <div className="text-right">
             <span className="font-medium">
-              {entry.totalMessages.toLocaleString()}
+              {(entry.totalMessages ?? 0).toLocaleString()}
             </span>
           </div>
         </div>
@@ -137,18 +137,6 @@ export function Leaderboard() {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  if (isLoading)
-    return (
-      <div className="flex justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-white-500" />
-      </div>
-    );
-
-  if (error)
-    return <div className="p-4 text-red-500">Error loading leaderboard</div>;
-
-  const currentUser = data?.pages[0]?.currentUser;
-
   return (
     <div>
       <div className="flex items-center gap-2 px-4 py-6">
@@ -170,59 +158,74 @@ export function Leaderboard() {
         </Tabs>
       </div>
 
-      <div className="w-full">
-        {/* Current User Stats */}
-        {currentUser && data.pages[0].users[currentUser.fid] && (
-          <div className="bg-black z-10 border-b border-gray-800">
-            <LeaderboardRow
-              entry={currentUser}
-              user={data.pages[0].users[currentUser.fid]}
-              isCurrentUser={true}
-              onUserClick={() => setSelectedUserId(currentUser.fid.toString())}
-            />
-          </div>
-        )}
+      {isLoading ? (
+        <div className="flex justify-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-white-500" />
+        </div>
+      ) : error ? (
+        <div className="p-4 text-red-500">Error loading leaderboard</div>
+      ) : (
+        <div className="w-full">
+          {/* Current User Stats */}
+          {data?.pages[0]?.currentUser &&
+            data.pages[0].users[data.pages[0].currentUser.fid] && (
+              <div className="bg-black z-10 border-b border-gray-800">
+                <LeaderboardRow
+                  entry={data.pages[0].currentUser}
+                  user={data.pages[0].users[data.pages[0].currentUser.fid]}
+                  isCurrentUser={true}
+                  onUserClick={() =>
+                    setSelectedUserId(data.pages[0].currentUser.fid.toString())
+                  }
+                />
+              </div>
+            )}
 
-        {data?.pages[0]?.leaderboard.length === 0 ? (
-          <div className="flex items-center justify-center min-h-[80vh] text-center p-8 text-white">
-            <div className="flex flex-col items-center gap-4">
-              <Trophy className="h-12 w-12 mx-auto mb-4" />
-              <p className="text-xl font-bold uppercase">
-                No leaderboard data yet
-              </p>
-              <p>Start chatting to appear on the leaderboard!</p>
-              <Link href="/">
-                <Button variant="secondary" className="font-medium">
-                  ← Back
-                </Button>
-              </Link>
+          {data?.pages[0]?.leaderboard.length === 0 ? (
+            <div className="flex items-center justify-center min-h-[80vh] text-center p-8 text-white">
+              <div className="flex flex-col items-center gap-4">
+                <Trophy className="h-12 w-12 mx-auto mb-4" />
+                <p className="text-xl font-bold uppercase">
+                  No leaderboard data yet
+                </p>
+                <p>Start chatting to appear on the leaderboard!</p>
+                <Link href="/">
+                  <Button variant="secondary" className="font-medium">
+                    ← Back
+                  </Button>
+                </Link>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-800">
-            {data?.pages.map((page) =>
-              page.leaderboard.map((entry) => {
-                const user = page.users[entry.fid];
-                return user ? (
-                  <LeaderboardRow
-                    key={entry.fid}
-                    entry={entry}
-                    user={user}
-                    isCurrentUser={entry.fid === currentUser?.fid}
-                    onUserClick={() => setSelectedUserId(entry.fid.toString())}
-                  />
-                ) : null;
-              })
+          ) : (
+            <div className="divide-y divide-gray-800">
+              {data?.pages.map((page) =>
+                page.leaderboard.map((entry) => {
+                  const user = page.users[entry.fid];
+                  return user ? (
+                    <LeaderboardRow
+                      key={entry.fid}
+                      entry={entry}
+                      user={user}
+                      isCurrentUser={
+                        entry.fid === data.pages[0].currentUser?.fid
+                      }
+                      onUserClick={() =>
+                        setSelectedUserId(entry.fid.toString())
+                      }
+                    />
+                  ) : null;
+                })
+              )}
+            </div>
+          )}
+
+          <div ref={ref} className="p-4 text-center">
+            {isFetchingNextPage && (
+              <Loader2 className="h-8 w-8 animate-spin text-white-500 mx-auto" />
             )}
           </div>
-        )}
-
-        <div ref={ref} className="p-4 text-center">
-          {isFetchingNextPage && (
-            <Loader2 className="h-8 w-8 animate-spin text-white-500 mx-auto" />
-          )}
         </div>
-      </div>
+      )}
 
       <UserSheet
         userId={selectedUserId}

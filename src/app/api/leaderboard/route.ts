@@ -27,25 +27,25 @@ export const GET = withAuth(async (req, user) => {
     .select([
       "users.fid",
       sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id)`.as(
-        "messages_sent"
+        "messagesSent"
       ),
       sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)`.as(
-        "messages_received"
+        "messagesReceived"
       ),
       sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true)`.as(
-        "messages_sent_onchain"
+        "messagesSentOnchain"
       ),
       sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)`.as(
-        "messages_received_onchain"
+        "messagesReceivedOnchain"
       ),
       sql<number>`(
         (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id) +
         (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)
-      )`.as("total_messages"),
+      )`.as("totalMessages"),
       sql<number>`(
         (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true) +
         (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)
-      )`.as("total_messages_onchain"),
+      )`.as("totalMessagesOnchain"),
     ])
     .orderBy(orderByStatement, "desc")
     .offset(offset)
@@ -84,25 +84,25 @@ export const GET = withAuth(async (req, user) => {
     .select([
       "users.fid",
       sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id)`.as(
-        "messages_sent"
+        "messagesSent"
       ),
       sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)`.as(
-        "messages_received"
+        "messagesReceived"
       ),
       sql<number>`(SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true)`.as(
-        "messages_sent_onchain"
+        "messagesSentOnchain"
       ),
       sql<number>`(SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)`.as(
-        "messages_received_onchain"
+        "messagesReceivedOnchain"
       ),
       sql<number>`(
         (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id) +
         (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id)
-      )`.as("total_messages"),
+      )`.as("totalMessages"),
       sql<number>`(
         (SELECT COUNT(*) FROM messages WHERE from_user_id = users.id AND is_onchain = true) +
         (SELECT COUNT(*) FROM messages WHERE to_user_id = users.id AND is_onchain = true)
-      )`.as("total_messages_onchain"),
+      )`.as("totalMessagesOnchain"),
       rankStatement.as("rank"),
     ])
     .where("users.id", "=", user.id)
@@ -125,10 +125,40 @@ export const GET = withAuth(async (req, user) => {
     rank: index + 1 + offset,
   }));
 
-  return Response.json({
-    leaderboard: results,
+  console.log(results.slice(0, 10));
+
+  const res = {
+    leaderboard: results.map((entry) => ({
+      fid: entry.fid,
+      messagesSent:
+        type === "onchain" ? entry.messagesSentOnchain : entry.messagesSent,
+      messagesReceived:
+        type === "onchain"
+          ? entry.messagesReceivedOnchain
+          : entry.messagesReceived,
+      totalMessages:
+        type === "onchain" ? entry.totalMessagesOnchain : entry.totalMessages,
+      rank: entry.rank,
+    })),
     users,
-    currentUser: currentUserStats,
+    currentUser: currentUserStats && {
+      fid: currentUserStats.fid,
+      messagesSent:
+        type === "onchain"
+          ? currentUserStats.messagesSentOnchain
+          : currentUserStats.messagesSent,
+      messagesReceived:
+        type === "onchain"
+          ? currentUserStats.messagesReceivedOnchain
+          : currentUserStats.messagesReceived,
+      totalMessages:
+        type === "onchain"
+          ? currentUserStats.totalMessagesOnchain
+          : currentUserStats.totalMessages,
+      rank: currentUserStats.rank,
+    },
     nextCursor: hasMore ? offset + limit : null,
-  });
+  };
+
+  return Response.json(res);
 });
