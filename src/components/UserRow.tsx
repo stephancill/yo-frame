@@ -23,6 +23,7 @@ type UserRowProps = {
   onLongPress?: () => void;
   selected?: boolean;
   onSelect?: () => void;
+  onInitiateSuperYo?: () => void;
   mode?: "select" | "message";
   isSuper?: boolean;
   animationPhase?: "initial" | "starting" | "complete";
@@ -46,6 +47,7 @@ export function UserRow(props: UserRowProps) {
     mode = "message",
     isSuper = false,
     animationPhase: animationPhaseOverride,
+    onInitiateSuperYo,
   } = props;
 
   const [animationPhaseInternal, setAnimationPhaseInternal] = useState<
@@ -56,6 +58,11 @@ export function UserRow(props: UserRowProps) {
   const sendMessageMutation = useSendMessageMutation();
 
   const handleClick = () => {
+    if (!disabled && isSuper && onInitiateSuperYo) {
+      onInitiateSuperYo();
+      return;
+    }
+
     if (!disabled && mode === "select" && onSelect) {
       onSelect();
       return;

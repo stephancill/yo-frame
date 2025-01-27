@@ -658,6 +658,18 @@ export function App() {
                         mode={superYoMode ? "select" : "message"}
                         animationPhase={animationPhaseOverride}
                         isSuper={isSuperYod}
+                        onInitiateSuperYo={
+                          account.address
+                            ? () => {
+                                setSuperYoMode(true);
+                                setSelectedUsers((prev) => {
+                                  const next = new Set(prev);
+                                  next.add(otherUserFid);
+                                  return next;
+                                });
+                              }
+                            : undefined
+                        }
                         onSelect={() => {
                           setSelectedUsers((prev) => {
                             const next = new Set(prev);
@@ -820,14 +832,6 @@ export function App() {
                   "Confirmed!"
                 ) : !userAddressVerified ? (
                   "Connected Address Not Verified"
-                ) : selectedUsers.size > 0 ? (
-                  `SEND SUPER YO (${selectedUsers.size}${
-                    yoToken?.balance && yoToken?.yoAmount
-                      ? ` / ${Math.floor(
-                          Number(yoToken.balance) / Number(yoToken.yoAmount)
-                        )}`
-                      : ""
-                  })`
                 ) : (yoToken?.balance !== undefined &&
                     yoToken?.yoAmount !== undefined &&
                     yoToken.balance < yoToken.yoAmount) ||
@@ -836,6 +840,14 @@ export function App() {
                       Number(yoToken?.balance) / Number(yoToken?.yoAmount)
                     ) ? (
                   "Insufficient $YO"
+                ) : selectedUsers.size > 0 ? (
+                  `SEND SUPER YO (${selectedUsers.size}${
+                    yoToken?.balance && yoToken?.yoAmount
+                      ? ` / ${Math.floor(
+                          Number(yoToken.balance) / Number(yoToken.yoAmount)
+                        )}`
+                      : ""
+                  })`
                 ) : (
                   "Select users"
                 )}
