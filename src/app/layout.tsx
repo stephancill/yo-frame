@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Provider } from "./providers";
 import { FRAME_METADATA } from "../lib/constants";
+import { Toaster } from "../components/ui/toaster";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className="bg-purple-500 text-white max-w-[600px] mx-auto">
         <Provider>{children}</Provider>
       </body>
+      <Toaster />
     </html>
   );
 }

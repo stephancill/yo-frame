@@ -74,6 +74,7 @@ import { NotificationPreview } from "./NotificationPreview";
 import { UserRow } from "./UserRow";
 import { UserSheet } from "./UserSheet";
 import { Skeleton } from "./ui/skeleton";
+import { useToast } from "../hooks/use-toast";
 
 type Message = {
   id: string;
@@ -106,6 +107,7 @@ export function App() {
   const account = useAccount();
   const chainId = useChainId();
   const { data: switchChainData, switchChain } = useSwitchChain();
+  const { toast } = useToast();
 
   const {
     data: yoTokenResults,
@@ -622,8 +624,6 @@ export function App() {
                         : message.fromFid;
                     const otherUser = page.users[otherUserFid];
 
-                    // TODO: Should be able to select in the search results in $yo mode
-
                     const disabled = !superYoMode
                       ? message.disabled
                       : superYoMode &&
@@ -805,11 +805,21 @@ export function App() {
                       {
                         onError(error, variables, context) {
                           console.error("Failed to send Super Yo:", error);
+                          toast({
+                            variant: "destructive",
+                            title: `Failed to send transaction (${error.name})`,
+                            description: error.message,
+                          });
                         },
                       }
                     );
                   } catch (error) {
                     console.error("Failed to send Super Yo:", error);
+                    toast({
+                      variant: "destructive",
+                      title: "Transaction Failed",
+                      description: "Failed to send Super Yo. Please try again.",
+                    });
                   }
                 }}
               >
