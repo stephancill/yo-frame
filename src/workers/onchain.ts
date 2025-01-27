@@ -96,55 +96,6 @@ export const onchainMessageWorker = new Worker<OnchainMessageJobData>(
       toUserNotificationUrl,
     } = result;
 
-    // If both users exist, check last message between them
-    if (fromUserId && toUserId) {
-      // Check last message between these users
-      const lastMessage = await db
-        .selectFrom("messages")
-        .select([
-          "fromUserId",
-          "createdAt",
-          sql<boolean>`created_at > NOW() - INTERVAL '1 hour'`.as(
-            "timeoutElapsed"
-          ),
-          "isOnchain",
-        ])
-        .where((eb) =>
-          eb.or([
-            eb.and([
-              eb("fromUserId", "=", fromUserId),
-              eb("toUserId", "=", toUserId),
-            ]),
-            eb.and([
-              eb("fromUserId", "=", toUserId),
-              eb("toUserId", "=", fromUserId),
-            ]),
-          ])
-        )
-        .orderBy("createdAt", "desc")
-        .limit(1)
-        .executeTakeFirst();
-
-      if (
-        !lastMessage?.timeoutElapsed &&
-        lastMessage?.fromUserId === fromUserId &&
-        lastMessage.isOnchain
-      ) {
-        console.log(
-          "Rejecting message: sender must wait 1 hour between onchain messages"
-        );
-        return {
-          success: false,
-          message:
-            "Rejecting message: sender must wait 1 hour between onchain messages",
-          fromFid: fromUser.fid,
-          toFid: toUser.fid,
-          desiredFromFid: desiredFromFid ?? null,
-          desiredToFid: desiredToFid ?? null,
-        };
-      }
-    }
-
     if (!fromUserId) {
       ({ id: fromUserId } = await db
         .insertInto("users")
