@@ -814,12 +814,22 @@ export function App() {
                       }
                     );
                   } catch (error) {
-                    console.error("Failed to send Super Yo:", error);
-                    toast({
-                      variant: "destructive",
-                      title: "Transaction Failed",
-                      description: "Failed to send Super Yo. Please try again.",
-                    });
+                    if (error instanceof Error) {
+                      console.error("Failed to send Super Yo:", error);
+                      toast({
+                        variant: "destructive",
+                        title: "Failed to send Super Yo",
+                        description: error.message,
+                      });
+                    } else {
+                      console.error("Failed to send Super Yo:", error);
+                      toast({
+                        variant: "destructive",
+                        title: "Failed to send Super Yo",
+                        description:
+                          "Failed to send Super Yo. Please try again.",
+                      });
+                    }
                   }
                 }}
               >
