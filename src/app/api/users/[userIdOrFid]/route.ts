@@ -43,29 +43,28 @@ export const GET = withAuth<{ params: Promise<{ userIdOrFid: string }> }>(
       )
       .groupBy(["users.id", "users.fid"]);
 
+    let fid: number | null = null;
+
     if (isNaN(Number(userIdOrFid))) {
       userQuery = userQuery.where("users.id", "=", userIdOrFid);
     } else {
-      userQuery = userQuery.where("users.fid", "=", parseInt(userIdOrFid));
+      fid = parseInt(userIdOrFid);
+      userQuery = userQuery.where("users.fid", "=", fid);
     }
 
     const dbUser = await userQuery.executeTakeFirst();
 
-    if (!dbUser) {
-      return Response.json({ error: "User not found" }, { status: 400 });
-    }
-
-    const [userData] = await getUserDatasCached([dbUser.fid]);
+    const [userData] = await getUserDatasCached([fid || dbUser!.fid]);
 
     return Response.json({
       userData,
       messageCounts: {
-        inbound: Number(dbUser.inbound || 0),
-        outbound: Number(dbUser.outbound || 0),
-        inboundOnchain: Number(dbUser.inboundOnchain || 0),
-        outboundOnchain: Number(dbUser.outboundOnchain || 0),
+        inbound: Number(dbUser?.inbound || 0),
+        outbound: Number(dbUser?.outbound || 0),
+        inboundOnchain: Number(dbUser?.inboundOnchain || 0),
+        outboundOnchain: Number(dbUser?.outboundOnchain || 0),
       },
-      rank: Number(dbUser.rank || 0),
+      rank: dbUser ? Number(dbUser.rank || 0) : null,
     });
   }
 );

@@ -1040,7 +1040,20 @@ export function App() {
           </div>
         </DialogContent>
       </Dialog>
-      <UserSheet userId={sheetUserId} onClose={() => setSheetUserId(null)} />
+      <UserSheet
+        userId={sheetUserId}
+        onClose={() => setSheetUserId(null)}
+        addSuperYoFid={
+          account.address
+            ? (fid) => {
+                setSuperYoMode(true);
+                setSelectedUsers((prev) => new Set([...prev, fid]));
+                setSheetUserId(null);
+                setSearchQuery("");
+              }
+            : undefined
+        }
+      />
       <Drawer open={showBuyDrawer} onOpenChange={setShowBuyDrawer}>
         <DrawerContent className="text-black">
           <DrawerHeader>

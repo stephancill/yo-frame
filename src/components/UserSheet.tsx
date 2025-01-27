@@ -13,9 +13,10 @@ import sdk from "@farcaster/frame-sdk";
 interface UserSheetProps {
   userId: string | null;
   onClose: () => void;
+  addSuperYoFid?: (fid: number) => void;
 }
 
-export function UserSheet({ userId, onClose }: UserSheetProps) {
+export function UserSheet({ userId, onClose, addSuperYoFid }: UserSheetProps) {
   const { authFetch, user } = useSession();
   const sendMessageMutation = useSendMessageMutation();
 
@@ -33,7 +34,7 @@ export function UserSheet({ userId, onClose }: UserSheetProps) {
           inboundOnchain: number;
           outboundOnchain: number;
         };
-        rank: number;
+        rank: number | null;
       }>;
     },
     enabled: !!userId && !!user,
@@ -155,6 +156,17 @@ export function UserSheet({ userId, onClose }: UserSheetProps) {
                       "Send Yo"
                     )}
                   </Button>
+                  {addSuperYoFid && (
+                    <Button
+                      className="px-4 bg-black font-bold shadow-lg rainbow-gradient"
+                      size="lg"
+                      onClick={() => {
+                        addSuperYoFid(userQuery.data!.userData.fid);
+                      }}
+                    >
+                      <span className="text-xl">$YO</span>
+                    </Button>
+                  )}
                   <Button
                     className="font-bold text-xl p-8 bg-gray-200 hover:bg-gray-300 flex-shrink"
                     onClick={() => {

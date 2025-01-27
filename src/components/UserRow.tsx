@@ -217,9 +217,6 @@ export function UserRow(props: UserRowProps) {
           </div>
         </div>
       </div>
-      {/* <div>
-        <pre>{JSON.stringify(props, null, 2)}</pre>
-      </div> */}
     </button>
   );
 }
