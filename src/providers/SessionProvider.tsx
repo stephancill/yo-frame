@@ -15,6 +15,14 @@ import {
   useState,
 } from "react";
 import * as Sentry from "@sentry/nextjs";
+import {
+  useAccount,
+  useChainId,
+  useConnect,
+  useConnectors,
+  useSwitchChain,
+} from "wagmi";
+import { base } from "viem/chains";
 
 interface SessionContextType {
   user: User | null | undefined;
@@ -39,6 +47,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<Context.FrameContext>();
+  const { connect } = useConnect();
+  const connectors = useConnectors();
+  const account = useAccount();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
 
   const {
     data: session,
@@ -215,6 +228,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    if (isSDKLoaded && connectors.length > 0 && !account.address) {
+      // Connect connector
+      connect({
+        connector: connectors[0],
+        chainId: base.id,
+      });
+    }
+  }, [isSDKLoaded, connectors, connect, account.address]);
+
+  useEffect(() => {
+    if (account.address && chainId !== base.id) {
+      switchChain({
+        chainId: base.id,
+      });
+    }
+  }, [account.address, chainId, switchChain]);
 
   return (
     <SessionContext.Provider
