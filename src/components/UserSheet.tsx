@@ -9,6 +9,7 @@ import { useSendMessageMutation } from "../lib/messages";
 import { getFidColor, formatNumber } from "../lib/utils";
 import { useSession } from "../providers/SessionProvider";
 import sdk from "@farcaster/frame-sdk";
+import { Skeleton } from "./ui/skeleton";
 
 interface UserSheetProps {
   userId: string | null;
@@ -28,6 +29,18 @@ export function UserSheet({ userId, onClose, addSuperYoFid }: UserSheetProps) {
       if (!res.ok) throw new Error("Failed to fetch user");
       return res.json() as Promise<{
         userData: NeynarUser;
+      }>;
+    },
+    enabled: !!userId && !!user,
+  });
+
+  const statsQuery = useQuery({
+    queryKey: ["user-stats", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const res = await authFetch(`/api/users/${userId}/stats`);
+      if (!res.ok) throw new Error("Failed to fetch user stats");
+      return res.json() as Promise<{
         messageCounts: {
           inbound: number;
           outbound: number;
@@ -66,67 +79,84 @@ export function UserSheet({ userId, onClose, addSuperYoFid }: UserSheetProps) {
                   <SheetTitle className="text-xl">
                     <div className="flex items-center justify-center gap-2">
                       <span>{userQuery.data.userData.username}</span>
-                      {userQuery.data.rank && (
-                        <Link href="/leaderboard">
-                          <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 hover:bg-purple-200 transition-colors">
-                            #{userQuery.data.rank}
-                          </span>
-                        </Link>
+                      {statsQuery.isLoading ? (
+                        <Skeleton className="h-5 w-12 rounded-full" />
+                      ) : (
+                        statsQuery.data?.rank && (
+                          <Link href="/leaderboard">
+                            <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 hover:bg-purple-200 transition-colors">
+                              #{statsQuery.data.rank}
+                            </span>
+                          </Link>
+                        )
                       )}
                     </div>
                   </SheetTitle>
                 </div>
-                {userQuery.data.messageCounts && (
+                {statsQuery.isLoading ? (
                   <div className="flex space-x-12 text-xl font-bold">
                     <div className="text-center">
-                      <div>
-                        {userQuery.data.messageCounts.outboundOnchain > 0 ? (
-                          <>
-                            {formatNumber(
-                              userQuery.data.messageCounts.outboundOnchain
-                            )}{" "}
-                            ★{" "}
-                            <span className="text-gray-500 text-sm">
-                              /{" "}
-                              {formatNumber(
-                                userQuery.data.messageCounts.outbound
-                              )}
-                            </span>
-                          </>
-                        ) : (
-                          formatNumber(userQuery.data.messageCounts.outbound)
-                        )}
-                      </div>
-                      <div className="text-sm">SENT</div>
+                      <Skeleton className="h-8 w-20 mb-2" />
+                      <Skeleton className="h-4 w-12 mx-auto" />
                     </div>
                     <div className="text-center">
-                      <div>
-                        {userQuery.data.messageCounts.inboundOnchain > 0 ? (
-                          <>
-                            {formatNumber(
-                              userQuery.data.messageCounts.inboundOnchain
-                            )}{" "}
-                            ★{" "}
-                            <span className="text-gray-500 text-sm">
-                              /{" "}
-                              {formatNumber(
-                                sendMessageMutation.isSuccess
-                                  ? userQuery.data.messageCounts.inbound + 1
-                                  : userQuery.data.messageCounts.inbound
-                              )}
-                            </span>
-                          </>
-                        ) : (
-                          formatNumber(
-                            sendMessageMutation.isSuccess
-                              ? userQuery.data.messageCounts.inbound + 1
-                              : userQuery.data.messageCounts.inbound
-                          )
-                        )}
-                      </div>
-                      <div className="text-sm">RECEIVED</div>
+                      <Skeleton className="h-8 w-20 mb-2" />
+                      <Skeleton className="h-4 w-12 mx-auto" />
                     </div>
                   </div>
+                ) : (
+                  statsQuery.data?.messageCounts && (
+                    <div className="flex space-x-12 text-xl font-bold">
+                      <div className="text-center">
+                        <div>
+                          {statsQuery.data.messageCounts.outboundOnchain > 0 ? (
+                            <>
+                              {formatNumber(
+                                statsQuery.data.messageCounts.outboundOnchain
+                              )}{" "}
+                              ★{" "}
+                              <span className="text-gray-500 text-sm">
+                                /{" "}
+                                {formatNumber(
+                                  statsQuery.data.messageCounts.outbound
+                                )}
+                              </span>
+                            </>
+                          ) : (
+                            formatNumber(statsQuery.data.messageCounts.outbound)
+                          )}
+                        </div>
+                        <div className="text-sm">SENT</div>
+                      </div>
+                      <div className="text-center">
+                        <div>
+                          {statsQuery.data.messageCounts.inboundOnchain > 0 ? (
+                            <>
+                              {formatNumber(
+                                statsQuery.data.messageCounts.inboundOnchain
+                              )}{" "}
+                              ★{" "}
+                              <span className="text-gray-500 text-sm">
+                                /{" "}
+                                {formatNumber(
+                                  sendMessageMutation.isSuccess
+                                    ? statsQuery.data.messageCounts.inbound + 1
+                                    : statsQuery.data.messageCounts.inbound
+                                )}
+                              </span>
+                            </>
+                          ) : (
+                            formatNumber(
+                              sendMessageMutation.isSuccess
+                                ? statsQuery.data.messageCounts.inbound + 1
+                                : statsQuery.data.messageCounts.inbound
+                            )
+                          )}
+                        </div>
+                        <div className="text-sm">RECEIVED</div>
+                      </div>
+                    </div>
+                  )
                 )}
                 <div className="flex flex-row w-full items-center mt-4 ">
                   <Button

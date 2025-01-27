@@ -393,10 +393,10 @@ export function App() {
   }, [context]);
 
   useEffect(() => {
-    if (searchQuery.length === 0) {
+    if (searchQuery.length === 0 && !superYoMode) {
       refetchMessages();
     }
-  }, [searchQuery]);
+  }, [searchQuery, superYoMode, refetchMessages]);
 
   useEffect(() => {
     if (user) {
@@ -446,7 +446,7 @@ export function App() {
 
   return (
     <div className="w-full">
-      {!searchQuery && superYoMode && (
+      {superYoMode && (
         <div className="flex w-full sticky top-0 z-50 bg-black shadow-lg">
           <button className="h-16 px-4 flex grow w-full items-center gap-2 text-xl font-bold bg-gray-800 text-center rainbow-gradient prevent-select">
             <div
@@ -481,58 +481,56 @@ export function App() {
         </div>
       )}
 
-      {!superYoMode && (
-        <div className="flex items-center">
-          <div className="relative h-16 flex-grow">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
-              size={24}
-            />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="text-2xl font-medium w-full px-12 h-full focus:outline-none placeholder:text-gray-300 text-purple-500 rounded-none"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X size={24} />
-              </button>
-            )}
-          </div>
-          {searchQuery === "" && (
-            <div className="flex bg-gray-100 text-gray-500">
-              <Link href="/leaderboard" className="p-0">
-                <Button variant="ghost" className="h-16 px-4">
-                  <ChartNoAxesColumn
-                    className="h-12 w-12"
-                    style={{ width: "24px", height: "24px" }}
-                  />
-                </Button>
-              </Link>
-
-              <Button
-                className="h-16 px-4"
-                variant="ghost"
-                onClick={() => setShowShareDialog(true)}
-              >
-                <Share style={{ width: "24px", height: "24px" }} />
-              </Button>
-              <Button
-                className="h-16 px-4"
-                variant="ghost"
-                onClick={() => setShowNotificationSettingsDialog(true)}
-              >
-                <Cog style={{ width: "24px", height: "24px" }} />
-              </Button>
-            </div>
+      <div className="flex items-center">
+        <div className="relative h-16 flex-grow">
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
+            size={24}
+          />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="text-2xl font-medium w-full px-12 h-full focus:outline-none placeholder:text-gray-300 text-purple-500 rounded-none"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={24} />
+            </button>
           )}
         </div>
-      )}
+        {searchQuery === "" && !superYoMode && (
+          <div className="flex bg-gray-100 text-gray-500">
+            <Link href="/leaderboard" className="p-0">
+              <Button variant="ghost" className="h-16 px-4">
+                <ChartNoAxesColumn
+                  className="h-12 w-12"
+                  style={{ width: "24px", height: "24px" }}
+                />
+              </Button>
+            </Link>
+
+            <Button
+              className="h-16 px-4"
+              variant="ghost"
+              onClick={() => setShowShareDialog(true)}
+            >
+              <Share style={{ width: "24px", height: "24px" }} />
+            </Button>
+            <Button
+              className="h-16 px-4"
+              variant="ghost"
+              onClick={() => setShowNotificationSettingsDialog(true)}
+            >
+              <Cog style={{ width: "24px", height: "24px" }} />
+            </Button>
+          </div>
+        )}
+      </div>
 
       {isFetching && (
         <div className="flex justify-center p-8">
@@ -547,29 +545,56 @@ export function App() {
               <Loader2 className="h-8 w-8 animate-spin text-white-500" />
             </div>
           ) : (
-            searchResults?.users?.map((user: SearchedUser) => (
-              <UserRow
-                key={user.fid}
-                user={user}
-                fid={user.fid}
-                backgroundColor={getFidColor(user.fid)}
-                disabled={false}
-                mode="message"
-                onMessageSent={() => {
-                  if (context && showAddFrameButton) {
-                    setShowSelfNotificationDialog(true);
-                  }
-                  setSentCountAdd((prev) => prev + 1);
-                }}
-                onShowNotification={(userData) => {
-                  setShowNotificationDialog(true);
-                  setDialogUser(userData);
-                }}
-                onLongPress={() => {
-                  setSheetUserId(String(user.fid));
-                }}
-              />
-            ))
+            searchResults?.users?.map((user: SearchedUser) => {
+              const disabled =
+                superYoMode && !user.verified_addresses.eth_addresses[0];
+
+              const isSuperYodUser = superYodUsers.has(user.fid);
+              const isSuperYod = isSuperYodUser;
+
+              const animationPhaseOverride = isSuperYodUser
+                ? "complete"
+                : undefined;
+
+              return (
+                <UserRow
+                  key={user.fid}
+                  user={user}
+                  fid={user.fid}
+                  backgroundColor={getFidColor(user.fid)}
+                  disabled={disabled}
+                  isSuper={isSuperYod}
+                  selected={selectedUsers.has(user.fid)}
+                  mode={superYoMode ? "select" : "message"}
+                  animationPhase={animationPhaseOverride}
+                  onSelect={() => {
+                    console.log("onSelect", user.fid);
+                    setSelectedUsers((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(user.fid)) {
+                        next.delete(user.fid);
+                      } else {
+                        next.add(user.fid);
+                      }
+                      return next;
+                    });
+                  }}
+                  onMessageSent={() => {
+                    if (context && showAddFrameButton) {
+                      setShowSelfNotificationDialog(true);
+                    }
+                    setSentCountAdd((prev) => prev + 1);
+                  }}
+                  onShowNotification={(userData) => {
+                    setShowNotificationDialog(true);
+                    setDialogUser(userData);
+                  }}
+                  onLongPress={() => {
+                    setSheetUserId(String(user.fid));
+                  }}
+                />
+              );
+            })
           )}
         </div>
       ) : (
@@ -597,10 +622,15 @@ export function App() {
                         : message.fromFid;
                     const otherUser = page.users[otherUserFid];
 
-                    const disabled =
-                      message.disabled ||
-                      (superYoMode &&
-                        !otherUser.verified_addresses.eth_addresses[0]);
+                    // TODO: Should be able to select in the search results in $yo mode
+
+                    const disabled = !superYoMode
+                      ? message.disabled
+                      : superYoMode &&
+                        !otherUser.verified_addresses.eth_addresses[0] &&
+                        (message.fromFid !== user?.fid ||
+                          Date.now() - new Date(message.createdAt).getTime() >
+                            60 * 60 * 1000);
 
                     const isSuperYodUser = superYodUsers.has(otherUserFid);
                     const isSuperYod = message.isOnchain || isSuperYodUser;
