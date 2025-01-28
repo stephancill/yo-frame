@@ -395,12 +395,6 @@ export function App() {
   }, [context]);
 
   useEffect(() => {
-    if (searchQuery.length === 0 && !superYoMode) {
-      refetchMessages();
-    }
-  }, [searchQuery, superYoMode, refetchMessages]);
-
-  useEffect(() => {
     if (user) {
       setSentCountAdd(0);
     }
