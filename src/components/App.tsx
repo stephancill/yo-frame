@@ -793,6 +793,7 @@ export function App() {
                 }
                 onClick={async () => {
                   try {
+                    switchChain({ chainId: base.id });
                     const result = await superYoMutation.mutateAsync(
                       Array.from(selectedUsers)
                     );
