@@ -6,17 +6,28 @@ import { sql } from "kysely";
 
 async function sendBatchNotifications() {
   // Get all users with hourly notifications
-  const usersToNotify = await db
+  let usersToNotifyQuery = db
     .selectFrom("users")
     .selectAll()
     .where("notificationType", "=", "hourly")
     .where("notificationUrl", "is not", null)
-    .where("notificationToken", "is not", null)
-    .execute();
+    .where("notificationToken", "is not", null);
+
+  const currentHour = new Date().getHours();
+
+  if (currentHour % 12 === 0) {
+    usersToNotifyQuery = usersToNotifyQuery.where(
+      "notificationType",
+      "=",
+      "semi_daily"
+    );
+  }
+
+  const usersToNotify = await usersToNotifyQuery.execute();
 
   for (const user of usersToNotify) {
     //Only return messages received by the user after the user's last sent message within the last hour
-    const messages = await db
+    let messagesQuery = db
       .selectFrom("messages")
       .innerJoin("users as fromUser", "messages.fromUserId", "fromUser.id")
       .select([
@@ -27,15 +38,29 @@ async function sendBatchNotifications() {
         "messages.createdAt",
       ])
       .where("messages.toUserId", "=", user.id)
-      .where("messages.createdAt", ">", sql<Date>`NOW() - INTERVAL '1 hour'`)
       .where("messages.createdAt", ">", (eb) =>
         eb
           .selectFrom("messages")
           .select(sql<Date>`MAX(created_at)`.as("lastSentAt"))
           .where("messages.fromUserId", "=", user.id)
       )
-      .orderBy("messages.createdAt", "desc")
-      .execute();
+      .orderBy("messages.createdAt", "desc");
+
+    if (currentHour % 12 === 0) {
+      messagesQuery = messagesQuery.where(
+        "messages.createdAt",
+        ">",
+        sql<Date>`NOW() - INTERVAL '12 hours'`
+      );
+    } else {
+      messagesQuery = messagesQuery.where(
+        "messages.createdAt",
+        ">",
+        sql<Date>`NOW() - INTERVAL '1 hour'`
+      );
+    }
+
+    const messages = await messagesQuery.execute();
 
     if (messages.length === 0) continue;
 

@@ -8,7 +8,7 @@ export type UserRow = {
   registeredAt: Date | null;
   notificationUrl: string | null;
   notificationToken: string | null;
-  notificationType: Generated<"all" | "hourly">;
+  notificationType: Generated<"all" | "hourly" | "semi_daily">;
 };
 
 export interface UserSessionRow {

@@ -4,6 +4,6 @@ export type User = {
   id: string;
   fid: number;
   notificationsEnabled: boolean;
-  notificationType: "all" | "hourly";
+  notificationType: "all" | "hourly" | "semi_daily";
   neynarUser: NeynarUser;
 };

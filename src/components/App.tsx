@@ -103,6 +103,8 @@ type MessagesResponse = {
   };
 };
 
+type NotificationType = "all" | "hourly" | "semi_daily";
+
 export function App() {
   const account = useAccount();
   const chainId = useChainId();
@@ -237,9 +239,8 @@ export function App() {
   const [showNotificationSettingsDialog, setShowNotificationSettingsDialog] =
     useState(false);
 
-  const [previewNotificationType, setPreviewNotificationType] = useState<
-    "all" | "hourly"
-  >(user?.notificationType || "all");
+  const [previewNotificationType, setPreviewNotificationType] =
+    useState<NotificationType>(user?.notificationType || "all");
 
   const [superYoMode, setSuperYoMode] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
@@ -252,7 +253,7 @@ export function App() {
   const [showSuperYoInfoDialog, setShowSuperYoInfoDialog] = useState(false);
 
   const updateNotificationTypeMutation = useMutation({
-    mutationFn: async (type: "all" | "hourly") => {
+    mutationFn: async (type: NotificationType) => {
       const response = await authFetch("/api/user/notifications", {
         method: "PATCH",
         headers: {
@@ -1031,7 +1032,7 @@ export function App() {
                   <Select
                     value={previewNotificationType}
                     onValueChange={(value) =>
-                      setPreviewNotificationType(value as "all" | "hourly")
+                      setPreviewNotificationType(value as NotificationType)
                     }
                     defaultValue={user?.notificationType}
                   >
@@ -1041,13 +1042,17 @@ export function App() {
                     <SelectContent>
                       <SelectItem value="all">All messages</SelectItem>
                       <SelectItem value="hourly">Hourly summary</SelectItem>
+                      <SelectItem value="semi_daily">
+                        Semi-daily summary
+                      </SelectItem>
                     </SelectContent>
                   </Select>
 
                   <div className="mt-4">
                     <p className="text-sm font-medium mb-2">Preview</p>
                     <div className="border rounded-lg p-4 space-y-4">
-                      {previewNotificationType === "hourly" ? (
+                      {previewNotificationType === "hourly" ||
+                      previewNotificationType === "semi_daily" ? (
                         <NotificationPreview
                           title="yo"
                           subtitle="from user1 and 5 others"
