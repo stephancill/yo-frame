@@ -682,10 +682,6 @@ export function App() {
                           }
                           setSentCountAdd((prev) => prev + 1);
                         }}
-                        onShowNotification={(userData) => {
-                          setShowNotificationDialog(true);
-                          setDialogUser(userData);
-                        }}
                         onLongPress={() => {
                           setSheetUserId(String(otherUserFid));
                         }}
