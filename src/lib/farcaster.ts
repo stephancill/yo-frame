@@ -245,7 +245,7 @@ export async function getUserDatasCached(
   return [...cachedUsers, ...res.users];
 }
 
-export async function getUsersByAddresses(addresses: `0x${string}`[]) {
+export async function getUsersByAddressesCached(addresses: `0x${string}`[]) {
   if (addresses.length === 0) {
     return {};
   }
@@ -307,8 +307,6 @@ export async function getUsersByAddresses(addresses: `0x${string}`[]) {
     ); // 3 days
   }
   await multi.exec();
-
-  console.log("result", result);
 
   return result;
 }

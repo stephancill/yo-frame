@@ -3,10 +3,12 @@ import { sql } from "kysely";
 import { decodeAbiParameters, getAddress, hexToString } from "viem/utils";
 import { ONCHAIN_MESSAGE_QUEUE_NAME } from "../lib/constants";
 import { db } from "../lib/db";
-import { getUsersByAddresses } from "../lib/farcaster";
+import { getUsersByAddressesCached } from "../lib/farcaster";
 import { notifyUsers } from "../lib/notifications";
-import { redisQueue } from "../lib/redis";
+import { redisCache, redisQueue } from "../lib/redis";
 import { OnchainMessageJobData } from "../types/jobs";
+import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
+import { getUserDataByAddressKey } from "../lib/keys";
 
 export const onchainMessageWorker = new Worker<OnchainMessageJobData>(
   ONCHAIN_MESSAGE_QUEUE_NAME,
@@ -14,11 +16,44 @@ export const onchainMessageWorker = new Worker<OnchainMessageJobData>(
     const { transactionHash, fromAddress, toAddress, amount, data } = job.data;
 
     // Look up user accounts from addresses
-    const { [fromAddress]: fromUsers, [toAddress]: toUsers } =
-      await getUsersByAddresses([
+    let { [fromAddress]: fromUsers, [toAddress]: toUsers } =
+      await getUsersByAddressesCached([
         getAddress(fromAddress),
         getAddress(toAddress),
       ]);
+
+    const neynarClient = new NeynarAPIClient(
+      new Configuration({
+        apiKey: process.env.NEYNAR_API_KEY!,
+      })
+    );
+
+    // Try again with uncached users
+    if (!fromUsers) {
+      fromUsers = (
+        await neynarClient.fetchBulkUsersByEthOrSolAddress({
+          addresses: [getAddress(fromAddress)],
+        })
+      ).users;
+
+      if (fromUsers.length > 0) {
+        // Expire the cache
+        await redisCache.del(getUserDataByAddressKey(fromAddress));
+      }
+    }
+
+    if (!toUsers) {
+      toUsers = (
+        await neynarClient.fetchBulkUsersByEthOrSolAddress({
+          addresses: [getAddress(toAddress)],
+        })
+      ).users;
+
+      if (toUsers.length > 0) {
+        // Expire the cache
+        await redisCache.del(getUserDataByAddressKey(toAddress));
+      }
+    }
 
     if (!fromUsers || !toUsers) {
       console.log("Farcaster user not found", {
