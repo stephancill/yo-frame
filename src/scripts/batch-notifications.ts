@@ -9,17 +9,24 @@ async function sendBatchNotifications() {
   let usersToNotifyQuery = db
     .selectFrom("users")
     .selectAll()
-    .where("notificationType", "=", "hourly")
     .where("notificationUrl", "is not", null)
     .where("notificationToken", "is not", null);
 
   const currentHour = new Date().getHours();
 
   if (currentHour % 12 === 0) {
+    console.log("semi_daily");
+
     usersToNotifyQuery = usersToNotifyQuery.where(
       "notificationType",
       "=",
       "semi_daily"
+    );
+  } else {
+    usersToNotifyQuery = usersToNotifyQuery.where(
+      "notificationType",
+      "=",
+      "hourly"
     );
   }
 
