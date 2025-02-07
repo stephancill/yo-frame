@@ -75,6 +75,12 @@ import { UserRow } from "./UserRow";
 import { UserSheet } from "./UserSheet";
 import { Skeleton } from "./ui/skeleton";
 import { useToast } from "../hooks/use-toast";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 type Message = {
   id: string;
@@ -236,8 +242,7 @@ export function App() {
   const [showShareDialog, setShowShareDialog] = useState(false);
 
   const [sheetUserId, setSheetUserId] = useState<string | null>(null);
-  const [showNotificationSettingsDialog, setShowNotificationSettingsDialog] =
-    useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
   const [previewNotificationType, setPreviewNotificationType] =
     useState<NotificationType>(user?.notificationType || "all");
@@ -375,6 +380,30 @@ export function App() {
           },
         }
       );
+    },
+  });
+
+  const refreshUserMutation = useMutation({
+    mutationFn: async () => {
+      const response = await authFetch("/api/user/refresh", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to refresh user data");
+      }
+    },
+    onSuccess: () => {
+      refetchUser();
+      toast({
+        title: "User data refreshed",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to refresh user data",
+        description: error.message,
+      });
     },
   });
 
@@ -521,7 +550,7 @@ export function App() {
             <Button
               className="h-16 px-4"
               variant="ghost"
-              onClick={() => setShowNotificationSettingsDialog(true)}
+              onClick={() => setShowSettingsDialog(true)}
             >
               <Cog style={{ width: "24px", height: "24px" }} />
             </Button>
@@ -1009,92 +1038,107 @@ export function App() {
           </div>
         </DialogContent>
       </Dialog>
-      <Dialog
-        open={showNotificationSettingsDialog}
-        onOpenChange={setShowNotificationSettingsDialog}
-      >
-        <DialogContent>
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="text-black">
           <DialogHeader>
-            <DialogTitle className="text-purple-500">
-              Notification Settings
-            </DialogTitle>
-            <DialogDescription>
-              Customize how and when you receive yo notifications
-            </DialogDescription>
+            <DialogTitle>Settings</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-4 text-black">
-            {
-              <>
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">
-                    Notification Frequency
-                  </label>
-                  <Select
-                    value={previewNotificationType}
-                    onValueChange={(value) =>
-                      setPreviewNotificationType(value as NotificationType)
-                    }
-                    defaultValue={user?.notificationType}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select frequency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All messages</SelectItem>
-                      <SelectItem value="hourly">Hourly summary</SelectItem>
-                      <SelectItem value="semi_daily">
-                        Semi-daily summary
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
 
-                  <div className="mt-4">
-                    <p className="text-sm font-medium mb-2">Preview</p>
-                    <div className="border rounded-lg p-4 space-y-4">
-                      {previewNotificationType === "hourly" ||
-                      previewNotificationType === "semi_daily" ? (
+          <div className="space-y-6">
+            {/* Notifications Section */}
+            <div className="space-y-4">
+              <h4 className="text-md font-medium">Notifications</h4>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium">
+                  Notification Frequency
+                </label>
+                <Select
+                  value={previewNotificationType}
+                  onValueChange={(value) =>
+                    setPreviewNotificationType(value as NotificationType)
+                  }
+                  defaultValue={user?.notificationType}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All messages</SelectItem>
+                    <SelectItem value="hourly">Hourly summary</SelectItem>
+                    <SelectItem value="semi_daily">
+                      Semi-daily summary
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="mt-4">
+                  <p className="text-sm font-medium mb-2">Preview</p>
+                  <div className="border rounded-lg p-4 space-y-4">
+                    {previewNotificationType === "hourly" ||
+                    previewNotificationType === "semi_daily" ? (
+                      <NotificationPreview
+                        title="yo"
+                        subtitle="from user1 and 5 others"
+                        timestamp="1m"
+                      />
+                    ) : (
+                      <>
                         <NotificationPreview
                           title="yo"
-                          subtitle="from user1 and 5 others"
+                          subtitle="from user1"
                           timestamp="1m"
                         />
-                      ) : (
-                        <>
-                          <NotificationPreview
-                            title="yo"
-                            subtitle="from user1"
-                            timestamp="1m"
-                          />
-                          <NotificationPreview
-                            title="yo"
-                            subtitle="from user2"
-                            timestamp="2m"
-                          />
-                        </>
-                      )}
-                    </div>
+                        <NotificationPreview
+                          title="yo"
+                          subtitle="from user2"
+                          timestamp="2m"
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
-                <Button
-                  className="w-full mt-4"
-                  onClick={() =>
-                    updateNotificationTypeMutation.mutate(
-                      previewNotificationType
-                    )
-                  }
-                  disabled={
-                    updateNotificationTypeMutation.isPending ||
-                    previewNotificationType === user?.notificationType
-                  }
-                >
-                  {updateNotificationTypeMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    "Save Changes"
-                  )}
-                </Button>
-              </>
-            }
+              </div>
+              <Button
+                className="w-full mt-4"
+                onClick={() =>
+                  updateNotificationTypeMutation.mutate(previewNotificationType)
+                }
+                disabled={
+                  updateNotificationTypeMutation.isPending ||
+                  previewNotificationType === user?.notificationType
+                }
+              >
+                {updateNotificationTypeMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </div>
+
+            {/* Advanced Section */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="advanced">
+                <AccordionTrigger className="text-md">
+                  Advanced
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4">
+                    <Button
+                      onClick={() => refreshUserMutation.mutate()}
+                      disabled={refreshUserMutation.isPending}
+                      className="w-full"
+                    >
+                      {refreshUserMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        "Refresh User Data"
+                      )}
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </DialogContent>
       </Dialog>
