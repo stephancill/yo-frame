@@ -17,7 +17,10 @@ export const POST = withAuth(async (req, user) => {
   const addressPairs = users
     .map((u, i) => ({
       fid: u.fid,
-      address: u.verified_addresses.eth_addresses[0] || null,
+      address:
+        u.verified_addresses.primary.eth_address ||
+        u.verified_addresses.eth_addresses[0] ||
+        null,
     }))
     .filter((pair) => pair.address !== null);
 
