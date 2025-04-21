@@ -50,6 +50,13 @@ export async function sendFrameNotifications({
     } satisfies SendNotificationRequest),
   });
 
+  const debugText = `
+    ${response.status}
+    ${response.statusText}
+    ${await response.clone().text()}
+  `;
+  console.log(debugText);
+
   const responseJson = await response.json();
 
   if (response.status === 200) {
