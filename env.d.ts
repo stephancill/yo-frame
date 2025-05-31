@@ -5,6 +5,7 @@ declare global {
       APP_URL: string;
       NEYNAR_API_KEY: string;
       HUB_URL: string;
+      DUNE_API_KEY: string;
     }
   }
 }
