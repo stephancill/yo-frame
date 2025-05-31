@@ -84,7 +84,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const challengeId = crypto.randomUUID();
       const challenge = await fetchChallenge(challengeId);
 
-      const result = await sdk.actions.signIn({ nonce: challenge });
+      const result = await sdk.actions.signIn({
+        nonce: challenge,
+        acceptAuthAddress: true,
+      });
 
       const session = await signIn({
         ...result,
