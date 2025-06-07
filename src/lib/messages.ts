@@ -1,6 +1,7 @@
 import { User as NeynarUser } from "@neynar/nodejs-sdk/build/api";
 import { useMutation } from "@tanstack/react-query";
 import { useSession } from "../providers/SessionProvider";
+import { sdk } from "@farcaster/frame-sdk";
 
 type PostMessageResponse = {
   message: {
@@ -22,6 +23,8 @@ export function useSendMessageMutation() {
       fid: number;
       authFetch: typeof window.fetch;
     }) => {
+      sdk.haptics.impactOccurred("heavy");
+
       const res = await authFetch("/api/messages", {
         method: "POST",
         body: JSON.stringify({ targetFid: variables.fid }),
@@ -31,6 +34,12 @@ export function useSendMessageMutation() {
 
       const data = (await res.json()) as Promise<PostMessageResponse>;
       return data;
+    },
+    onSuccess(data, variables, context) {
+      sdk.haptics.impactOccurred("light");
+    },
+    onError(error, variables, context) {
+      sdk.haptics.notificationOccurred("error");
     },
   });
 }

@@ -7,7 +7,8 @@ import { twMerge } from "tailwind-merge";
 import { useLongPress } from "../hooks/use-long-press";
 import { useSendMessageMutation } from "../lib/messages";
 import { useSession } from "../providers/SessionProvider";
-import { Bell, BellOff, Check } from "lucide-react";
+import { BellOff, Check } from "lucide-react";
+import sdk from "@farcaster/frame-sdk";
 
 type UserRowProps = {
   user: SearchedUser | NeynarUser;
@@ -59,6 +60,7 @@ export function UserRow(props: UserRowProps) {
 
   const handleClick = () => {
     if (!disabled && isSuper && onInitiateSuperYo) {
+      sdk.haptics.impactOccurred("rigid");
       onInitiateSuperYo();
       return;
     }
@@ -115,7 +117,7 @@ export function UserRow(props: UserRowProps) {
         animationPhase === "complete"
       }
       className={twMerge(
-        "block w-full text-left hover:brightness-95 relative prevent-select border-b border-white/50",
+        "block w-full text-left hover:brightness-95 relative prevent-select border-b border-white/50 select-none",
         (disabled ||
           sendMessageMutation.isPending ||
           animationPhase === "complete") &&

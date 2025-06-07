@@ -594,7 +594,7 @@ export function App() {
                   mode={superYoMode ? "select" : "message"}
                   animationPhase={animationPhaseOverride}
                   onSelect={() => {
-                    console.log("onSelect", user.fid);
+                    sdk.haptics.selectionChanged();
                     setSelectedUsers((prev) => {
                       const next = new Set(prev);
                       if (next.has(user.fid)) {
@@ -695,6 +695,7 @@ export function App() {
                             : undefined
                         }
                         onSelect={() => {
+                          sdk.haptics.selectionChanged();
                           setSelectedUsers((prev) => {
                             const next = new Set(prev);
                             if (next.has(otherUserFid)) {
@@ -713,6 +714,7 @@ export function App() {
                           setSentCountAdd((prev) => prev + 1);
                         }}
                         onLongPress={() => {
+                          sdk.haptics.impactOccurred("rigid");
                           setSheetUserId(String(otherUserFid));
                         }}
                       />
@@ -813,10 +815,13 @@ export function App() {
                 }
                 onClick={async () => {
                   try {
+                    sdk.haptics.impactOccurred("rigid");
+
                     switchChain({ chainId: base.id });
                     const result = await superYoMutation.mutateAsync(
                       Array.from(selectedUsers)
                     );
+
                     sendSuperYoTransaction(
                       {
                         to: YO_TOKEN_ADDRESS,
@@ -831,6 +836,9 @@ export function App() {
                             title: `Failed to send transaction (${error.name})`,
                             description: error.message,
                           });
+                        },
+                        onSuccess(data, variables, context) {
+                          sdk.haptics.notificationOccurred("success");
                         },
                       }
                     );
